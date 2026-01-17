@@ -427,35 +427,60 @@ async def ingest_pyqs_background():
 @app.post("/api/tts/synthesize")
 async def synthesize_speech(request: dict):
     """
-    Synthesize speech from text using Google Cloud TTS.
+    Synthesize speech from text using Google Cloud TTS with Indian language support.
+    
+    Automatically selects Indian-accent voices for Indian languages.
     
     Request body:
     {
         "text": "Text to convert to speech",
-        "language_code": "en-US" (optional),
-        "voice_name": "en-US-Neural2-F" (optional),
+        "language_code": "hi-IN" or "kn-IN" or "en-IN" (optional, auto-detects voice),
+        "voice_name": "hi-IN-Neural2-A" (optional, auto-selected if not provided),
         "speaking_rate": 1.0 (optional),
         "pitch": 0.0 (optional)
     }
+    
+    Supported languages:
+    - hi, hi-IN: Hindi (Indian accent)
+    - kn, kn-IN: Kannada (Indian accent)
+    - ml, ml-IN: Malayalam (Indian accent)
+    - ta, ta-IN: Tamil (Indian accent)
+    - te, te-IN: Telugu (Indian accent)
+    - mr, mr-IN: Marathi (Indian accent)
+    - gu, gu-IN: Gujarati (Indian accent)
+    - bn, bn-IN: Bengali (Indian accent)
+    - pa, pa-IN: Punjabi (Indian accent)
+    - en, en-IN: English with Indian accent
     """
     try:
         text = request.get("text")
         if not text:
             raise HTTPException(status_code=400, detail="Text is required")
         
-        # Limit text length
-        if len(text) > 5000:
-            raise HTTPException(status_code=400, detail="Text too long (max 5000 characters)")
+        if not isinstance(text, str):
+            raise HTTPException(status_code=400, detail="Text must be a string")
+        
+        if len(text.strip()) == 0:
+            raise HTTPException(status_code=400, detail="Text cannot be empty")
         
         # Get optional parameters
-        language_code = request.get("language_code", "en-US")
-        voice_name = request.get("voice_name", "en-US-Neural2-F")  # Natural female voice
-        speaking_rate = request.get("speaking_rate", 1.0)
-        pitch = request.get("pitch", 0.0)
+        language_code = request.get("language_code", "en-IN")
+        voice_name = request.get("voice_name")  # Optional - will be auto-selected
+        speaking_rate = float(request.get("speaking_rate", 1.0))
+        pitch = float(request.get("pitch", 0.0))
         
-        logger.info(f"TTS request: {text[:50]}... (voice: {voice_name})")
+        # Validate parameters
+        if not (0.25 <= speaking_rate <= 4.0):
+            speaking_rate = 1.0
+            logger.warning("Invalid speaking_rate, using default 1.0")
         
-        # Synthesize speech
+        if not (-20.0 <= pitch <= 20.0):
+            pitch = 0.0
+            logger.warning("Invalid pitch, using default 0.0")
+        
+        logger.info(f"🎤 TTS request: {text[:50]}... ({len(text)} chars, language: {language_code})")
+        
+        # Synthesize speech (voice_name will be auto-selected if not provided)
         audio_content = await tts_service.synthesize_speech(
             text=text,
             language_code=language_code,
@@ -465,7 +490,9 @@ async def synthesize_speech(request: dict):
         )
         
         if not audio_content:
-            raise HTTPException(status_code=500, detail="Failed to synthesize speech")
+            raise HTTPException(status_code=500, detail="Failed to synthesize speech - no audio generated")
+        
+        logger.info(f"✅ TTS success: Generated {len(audio_content)} bytes of audio")
         
         # Return audio as MP3
         return Response(
@@ -479,9 +506,12 @@ async def synthesize_speech(request: dict):
         
     except HTTPException:
         raise
+    except ValueError as e:
+        logger.error(f"❌ TTS Validation Error: {str(e)}")
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        logger.error(f"Error synthesizing speech: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"❌ TTS Error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Speech synthesis failed: {str(e)}")
 
 
 # Error handlers
