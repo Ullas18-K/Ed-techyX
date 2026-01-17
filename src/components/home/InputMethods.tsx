@@ -1,12 +1,13 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Mic, MicOff, Image, Send, Sparkles, X, Upload, Wand2 } from 'lucide-react';
+import { Mic, MicOff, Send, Sparkles, X, Wand2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { sampleQuestions } from '@/lib/mockData';
 import { Translate } from '@/components/Translate';
 import { useTranslate } from '@/lib/useTranslate';
 import { useTranslationStore } from '@/lib/translationStore';
+import { useSpeechRecognition } from 'react-speech-kit';
 
 interface InputMethodsProps {
   onSubmit: (question: string) => void;
@@ -30,13 +31,14 @@ export function InputMethods({ onSubmit }: InputMethodsProps) {
     initPlaceholder();
   }, [currentLanguage, translate]);
   const [question, setQuestion] = useState('');
-  const [isRecording, setIsRecording] = useState(false);
-  const [recordingTime, setRecordingTime] = useState(0);
-  const [uploadedImage, setUploadedImage] = useState<string | null>(null);
-  const [showOCRResult, setShowOCRResult] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const { listen, listening, stop } = useSpeechRecognition({
+    onResult: (result: string) => {
+      setQuestion(result);
+    },
+  });
 
   // Auto-resize textarea
   useEffect(() => {
@@ -46,48 +48,16 @@ export function InputMethods({ onSubmit }: InputMethodsProps) {
     }
   }, [question]);
 
-  // Recording timer
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (isRecording) {
-      interval = setInterval(() => {
-        setRecordingTime((t) => t + 1);
-      }, 1000);
-    }
-    return () => clearInterval(interval);
-  }, [isRecording]);
-
   const handleVoiceClick = () => {
-    if (isRecording) {
-      setIsRecording(false);
-      setRecordingTime(0);
-      const randomQuestion = sampleQuestions[Math.floor(Math.random() * sampleQuestions.length)];
-      setQuestion(randomQuestion);
+    if (listening) {
+      stop();
     } else {
-      setIsRecording(true);
-    }
-  };
-
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = () => {
-        setUploadedImage(reader.result as string);
-        setTimeout(() => {
-          setShowOCRResult(true);
-          setQuestion('What is the process shown in this diagram?');
-        }, 1500);
+      const languageMap: Record<string, string> = {
+        en: 'en-IN', hi: 'hi-IN', kn: 'kn-IN', ml: 'ml-IN',
+        ta: 'ta-IN', te: 'te-IN', mr: 'mr-IN', gu: 'gu-IN',
+        bn: 'bn-IN', pa: 'pa-IN'
       };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const removeImage = () => {
-    setUploadedImage(null);
-    setShowOCRResult(false);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+      listen({ lang: languageMap[currentLanguage] || 'en-IN' });
     }
   };
 
@@ -119,42 +89,6 @@ export function InputMethods({ onSubmit }: InputMethodsProps) {
         {/* Top shine effect */}
         <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/80 to-transparent" />
 
-        {/* Uploaded image preview */}
-        <AnimatePresence>
-          {uploadedImage && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              className="relative p-4 border-b border-border/40"
-            >
-              <div className="relative inline-block">
-                <img
-                  src={uploadedImage}
-                  alt="Uploaded"
-                  className="max-h-32 rounded-2xl object-contain border border-border/50 shadow-soft"
-                />
-                <button
-                  onClick={removeImage}
-                  className="absolute -top-2 -right-2 p-1.5 bg-destructive text-destructive-foreground rounded-full hover:bg-destructive/90 transition-colors shadow-lg"
-                >
-                  <X className="w-3 h-3" />
-                </button>
-              </div>
-              {showOCRResult && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="mt-3 text-sm text-muted-foreground inline-flex items-center gap-2 glass-card rounded-xl px-4 py-2"
-                >
-                  <Sparkles className="w-4 h-4 text-accent" />
-                  <span><Translate>Text extracted from image</Translate></span>
-                </motion.div>
-              )}
-            </motion.div>
-          )}
-        </AnimatePresence>
-
         {/* Text input area */}
         <div className="p-4">
           <textarea
@@ -172,7 +106,7 @@ export function InputMethods({ onSubmit }: InputMethodsProps) {
 
         {/* Voice recording indicator */}
         <AnimatePresence>
-          {isRecording && (
+          {listening && (
             <motion.div
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
@@ -197,7 +131,7 @@ export function InputMethods({ onSubmit }: InputMethodsProps) {
                   ))}
                 </div>
                 <span className="text-sm text-destructive font-medium">
-                  <Translate>Recording...</Translate> {recordingTime}s
+                  <Translate>Listening...</Translate>
                 </span>
                 <div className="ml-auto flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full bg-destructive animate-pulse" />
@@ -212,37 +146,20 @@ export function InputMethods({ onSubmit }: InputMethodsProps) {
           <div className="flex items-center gap-2">
             {/* Voice input button */}
             <Button
-              variant={isRecording ? "destructive" : "glass"}
+              variant={listening ? "destructive" : "glass"}
               size="icon-lg"
               onClick={handleVoiceClick}
               className={cn(
                 "rounded-lg",
-                isRecording && "animate-pulse"
+                listening && "animate-pulse"
               )}
             >
-              {isRecording ? (
+              {listening ? (
                 <MicOff className="w-4 h-4" />
               ) : (
                 <Mic className="w-4 h-4" />
               )}
             </Button>
-
-            {/* Image upload button */}
-            <Button
-              variant="glass"
-              size="icon-lg"
-              onClick={() => fileInputRef.current?.click()}
-              className="rounded-lg"
-            >
-              <Image className="w-4 h-4" />
-            </Button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              onChange={handleImageUpload}
-              className="hidden"
-            />
           </div>
 
           {/* Submit button */}
@@ -259,8 +176,6 @@ export function InputMethods({ onSubmit }: InputMethodsProps) {
           </Button>
         </div>
       </div>
-
-
     </motion.div>
   );
 }

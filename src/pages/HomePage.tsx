@@ -9,6 +9,7 @@ import { ProfileScreen } from '@/components/profile/ProfileScreen';
 import { useLearningStore } from '@/lib/learningStore';
 import { useAuthStore } from '@/lib/authStore';
 import { toast } from 'sonner';
+import { HomePenman } from '@/components/assistant/HomePenman';
 
 const pageVariants = {
   hidden: { opacity: 0 },
@@ -51,7 +52,7 @@ const HomePage = () => {
       setQuestion(question);
       addSimulationHistory(question);
       setIsThinking(true);
-      
+
       // Try AI-powered scenario generation
       try {
         await setAIScenario(question, token || '');
@@ -63,7 +64,7 @@ const HomePage = () => {
           duration: 3000
         });
       }
-      
+
     } catch (error) {
       console.error('❌ Question submission failed:', error);
       toast.error('Failed to start learning session');
@@ -71,14 +72,14 @@ const HomePage = () => {
     }
   }, [setQuestion, setAIScenario, addSimulationHistory, token]);
 
-  const handleThinkingComplete = useCallback(() => { 
+  const handleThinkingComplete = useCallback(() => {
     setIsThinking(false);
     navigate('/plan');
-    toast.success('Learning plan ready!'); 
+    toast.success('Learning plan ready!');
   }, [navigate]);
 
   return (
-    <motion.div 
+    <motion.div
       className="min-h-screen w-full bg-background bg-gradient-mesh noise overflow-x-hidden flex flex-col relative"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
@@ -87,7 +88,7 @@ const HomePage = () => {
       layout={false}
     >
       {/* Full-screen background orbs */}
-      <motion.div 
+      <motion.div
         className="fixed inset-0 pointer-events-none overflow-hidden -z-10"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -96,19 +97,19 @@ const HomePage = () => {
         layout={false}
         style={{ willChange: 'opacity', contain: 'layout style paint' }}
       >
-        <motion.div 
+        <motion.div
           className="orb orb-primary w-[100vw] h-[100vh] fixed top-0 left-0"
           animate={{ scale: [1, 1.1, 1], opacity: [0.5, 0.7, 0.5] }}
           transition={{ duration: 8, repeat: Infinity, ease: "easeInOut", repeatDelay: 0 }}
           style={{ willChange: 'transform, opacity' }}
         />
-        <motion.div 
+        <motion.div
           className="orb orb-accent w-[90vw] h-[90vh] fixed top-0 right-0"
           animate={{ scale: [1, 1.15, 1], opacity: [0.4, 0.6, 0.4] }}
           transition={{ duration: 10, repeat: Infinity, ease: "easeInOut", delay: 2, repeatDelay: 0 }}
           style={{ willChange: 'transform, opacity' }}
         />
-        <motion.div 
+        <motion.div
           className="orb orb-warm w-[80vw] h-[80vh] fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
           animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.5, 0.3] }}
           transition={{ duration: 12, repeat: Infinity, ease: "easeInOut", delay: 4, repeatDelay: 0 }}
@@ -125,7 +126,7 @@ const HomePage = () => {
           }}
         />
       )}
-      
+
       {/* Profile Screen Modal */}
       <AnimatePresence>
         {showProfile && (
@@ -149,7 +150,7 @@ const HomePage = () => {
             style={{ willChange: 'opacity', contain: 'layout style' }}
           >
             <div className="flex-1 flex flex-col justify-center items-center px-4 relative z-10 w-full overflow-y-auto" style={{ willChange: 'auto', maxHeight: 'calc(100vh - 80px)', paddingTop: '20px' }}>
-              <motion.div 
+              <motion.div
                 className="flex-1 flex flex-col justify-center items-center max-w-4xl w-full gap-8"
                 variants={containerVariants}
                 initial="hidden"
@@ -160,6 +161,26 @@ const HomePage = () => {
                 <InputMethods onSubmit={handleQuestionSubmit} />
               </motion.div>
             </div>
+
+            {/* Added Home Assistant */}
+            <HomePenman />
+
+            {/* Powered by Gemini Attribution */}
+            <motion.div
+              className="fixed bottom-8 right-8 z-50 flex flex-col items-end gap-1 pointer-events-auto"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 1, duration: 0.5 }}
+            >
+              <span className="text-[9px] font-medium uppercase tracking-[0.3em] text-muted-foreground/40 mr-1">
+                Powered by
+              </span>
+              <img
+                src="/gemini.png"
+                alt="Gemini AI"
+                className="h-8 w-auto object-contain brightness-110 opacity-60 hover:opacity-100 transition-all duration-300 drop-shadow-sm"
+              />
+            </motion.div>
           </motion.div>
         ) : (
           <motion.div

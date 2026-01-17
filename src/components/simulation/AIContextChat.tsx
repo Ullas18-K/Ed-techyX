@@ -1,6 +1,6 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, Sparkles, Bot, User, Loader2, BookOpen, Lightbulb, CheckCircle } from 'lucide-react';
+import { Send, Sparkles, Bot, User, Loader2, BookOpen, Lightbulb, CheckCircle, Volume2, VolumeX, X, Mic, MicOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -10,6 +10,10 @@ import { getAIGuidance } from '@/lib/aiService';
 import { useAuthStore } from '@/lib/authStore';
 import { useLearningStore } from '@/lib/learningStore';
 import { Translate } from '@/components/Translate';
+import { useTranslationStore } from '@/lib/translationStore';
+import { useSpeechRecognition } from 'react-speech-kit';
+
+const TTS_URL = 'http://localhost:8001/api/tts/synthesize';
 
 interface RAGSource {
   chapter?: string;
@@ -42,21 +46,104 @@ export function AIContextChat({ scenarioId, currentTaskId, context, onTaskComple
     {
       id: '1',
       role: 'ai',
-      content: context.greeting || "Hi! I'm your AI learning assistant powered by Google Gemini and NCERT content. 🌟 Ask me anything about what you're learning, or tell me what you're observing in the simulation!",
+      content: context.greeting || "Hi! I'm Penman, your AI learning assistant. 🌟 Ask me anything about what you're learning, or tell me what you're observing in the simulation!",
       timestamp: new Date()
     }
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const { token } = useAuthStore();
   const { completeTask, simulationValues, simulationResults } = useLearningStore();
+  const { currentLanguage, translate } = useTranslationStore();
+
+  const { listen, listening, stop } = useSpeechRecognition({
+    onResult: (result: string) => {
+      setInput(result);
+    },
+  });
+
+  const handleMicToggle = () => {
+    if (listening) {
+      stop();
+    } else {
+      listen({ lang: getLanguageCodeForTTS(currentLanguage) });
+    }
+  };
+
+  const getLanguageCodeForTTS = (language: string): string => {
+    const languageMap: Record<string, string> = {
+      en: 'en-IN', hi: 'hi-IN', kn: 'kn-IN', ml: 'ml-IN',
+      ta: 'ta-IN', te: 'te-IN', mr: 'mr-IN', gu: 'gu-IN',
+      bn: 'bn-IN', pa: 'pa-IN'
+    };
+    return languageMap[language] || 'en-IN';
+  };
+
+  const speak = useCallback(async (text: string) => {
+    if (isMuted || !text) return;
+
+    try {
+      setIsSpeaking(true);
+
+      // Translate if needed before TTS
+      let textToSpeak = text;
+      if (currentLanguage !== 'en') {
+        const result = await translate(text);
+        textToSpeak = Array.isArray(result) ? result[0] : (result as string);
+      }
+
+      const response = await fetch(TTS_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text: textToSpeak,
+          language_code: getLanguageCodeForTTS(currentLanguage),
+          speaking_rate: 1.0,
+          pitch: 0.0,
+        }),
+      });
+
+      if (!response.ok) throw new Error('TTS synthesis failed');
+
+      const audioBlob = await response.blob();
+      const audioUrl = URL.createObjectURL(audioBlob);
+
+      if (audioRef.current) {
+        audioRef.current.pause();
+      }
+
+      const audio = new Audio(audioUrl);
+      audioRef.current = audio;
+
+      audio.onplay = () => setIsSpeaking(true);
+      audio.onended = () => {
+        setIsSpeaking(false);
+        URL.revokeObjectURL(audioUrl);
+      };
+
+      await audio.play();
+    } catch (error) {
+      console.error('AI Chat TTS Error:', error);
+      setIsSpeaking(false);
+    }
+  }, [isMuted, currentLanguage, translate]);
 
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages]);
+
+  // Read greeting on mount if not muted
+  useEffect(() => {
+    if (messages.length === 1 && messages[0].role === 'ai') {
+      speak(messages[0].content);
+    }
+  }, []);
 
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
@@ -101,6 +188,7 @@ export function AIContextChat({ scenarioId, currentTaskId, context, onTaskComple
       };
 
       setMessages(prev => [...prev, aiMessage]);
+      speak(aiMessage.content);
 
       // Handle task completion
       if (response.task_complete) {
@@ -120,6 +208,7 @@ export function AIContextChat({ scenarioId, currentTaskId, context, onTaskComple
         action: 'error'
       };
       setMessages(prev => [...prev, errorMessage]);
+      speak(errorMessage.content);
     } finally {
       setIsLoading(false);
     }
@@ -142,37 +231,70 @@ export function AIContextChat({ scenarioId, currentTaskId, context, onTaskComple
     }
   };
 
+  const toggleMute = () => {
+    const newMuted = !isMuted;
+    setIsMuted(newMuted);
+
+    if (newMuted) {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+      }
+      setIsSpeaking(false);
+    } else {
+      // If unmuting, speak the last AI message
+      const lastAiMsg = [...messages].reverse().find(m => m.role === 'ai');
+      if (lastAiMsg) speak(lastAiMsg.content);
+    }
+  };
+
   return (
-    <div className="flex flex-col h-full glass-card rounded-2xl overflow-hidden">
-      {/* Header */}
-      <div className="flex items-center gap-3 p-4 border-b border-primary/10">
-        <div className="relative w-10 h-10 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center">
-          <Bot className="w-5 h-5 text-white" />
+    <div className="flex flex-col h-full bg-transparent">
+      {/* Header - more compact */}
+      <div className="flex items-center gap-3 p-4 border-b border-white/5 bg-slate-800/20">
+        <div className="relative w-10 h-10 flex items-center justify-center shrink-0">
+          <img src="/penman.png" alt="Penman" className="w-full h-full object-contain" />
           {isLoading && (
             <motion.div
               className="absolute inset-0"
-              animate={{ scale: [1, 1.3, 1], opacity: [0.7, 0, 0.7] }}
+              animate={{ scale: [1, 1.2, 1], opacity: [0.5, 0, 0.5] }}
               transition={{ duration: 1.5, repeat: Infinity }}
             >
-              <div className="w-full h-full rounded-full bg-primary/30" />
+              <div className="w-full h-full rounded-xl bg-primary/30" />
             </motion.div>
           )}
         </div>
-        <div className="flex-1">
-          <h3 className="font-semibold text-foreground"><Translate>AI Learning Assistant</Translate></h3>
-          <p className="text-sm text-muted-foreground">
-            {isLoading ? <Translate>Thinking...</Translate> : <Translate>Ready to help</Translate>}
-          </p>
+        <div className="flex-1 min-w-0">
+          <h3 className="font-bold text-white text-base tracking-tight truncate"><Translate>Penman Assistant</Translate></h3>
+          <div className="flex items-center gap-1.5 mt-0.5">
+            <span className={cn(
+              "w-1.5 h-1.5 rounded-full",
+              isLoading ? "bg-amber-400 animate-pulse" : "bg-green-400"
+            )} />
+            <p className="text-[9px] font-black text-white/40 uppercase tracking-[0.1em]">
+              {isLoading ? <Translate>Thinking</Translate> : <Translate>Online</Translate>}
+            </p>
+          </div>
         </div>
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full glass-card">
-          <Sparkles className="w-4 h-4 text-primary" />
-          <span className="text-xs font-medium text-foreground">AI-Powered</span>
+        <div className="flex items-center pr-8">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleMute}
+            className={cn(
+              "h-8 w-8 rounded-lg transition-all",
+              isMuted ? "text-white/20 hover:bg-white/10" : "text-white bg-white/10 hover:bg-white/20",
+              isSpeaking && !isMuted && "animate-pulse"
+            )}
+          >
+            {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+          </Button>
         </div>
       </div>
 
-      {/* Messages */}
-      <ScrollArea ref={scrollRef} className="flex-1 p-4">
-        <div className="space-y-4">
+      {/* Messages overflow-hidden handles the scroll better in a smaller area */}
+      <ScrollArea ref={scrollRef} className="flex-1 px-3">
+        <div className="space-y-6 py-6">
           <AnimatePresence>
             {messages.map((message) => (
               <motion.div
@@ -184,59 +306,54 @@ export function AIContextChat({ scenarioId, currentTaskId, context, onTaskComple
                   message.role === 'user' ? 'flex-row-reverse' : 'flex-row'
                 )}
               >
-                <div className={cn(
-                  "w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0",
-                  message.role === 'ai'
-                    ? 'bg-gradient-to-br from-primary to-accent'
-                    : 'bg-primary/20 border border-primary/30'
-                )}>
-                  {message.role === 'ai' ? (
-                    <Bot className="w-4 h-4 text-white" />
-                  ) : (
-                    <User className="w-4 h-4 text-primary" />
-                  )}
-                </div>
+                {/* Avatar only for AI - smaller and no bg */}
+                {message.role === 'ai' && (
+                  <div className="w-8 h-8 flex items-center justify-center shrink-0 self-end mb-1">
+                    <img src="/penman.png" alt="P" className="w-full h-full object-contain" />
+                  </div>
+                )}
 
                 <div className={cn(
-                  "flex-1 max-w-[80%] rounded-2xl glass-card",
-                  message.role === 'user' && 'bg-primary/5'
+                  "flex-1 max-w-[85%] rounded-[1.5rem] transition-all shadow-md px-4 py-3",
+                  message.role === 'user'
+                    ? 'bg-primary text-white rounded-tr-none'
+                    : 'bg-white/95 text-slate-800 rounded-tl-none font-medium'
                 )}>
-                  <div className="p-3">
-                    <p className="text-sm text-foreground leading-relaxed">
-                      {message.content}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1.5">
+                  <p className="text-[13px] leading-relaxed">
+                    {message.content}
+                  </p>
+                  <div className={cn(
+                    "flex items-center gap-1.5 mt-2",
+                    message.role === 'user' ? 'text-white/60' : 'text-slate-400'
+                  )}>
+                    <span className="text-[8px] font-black uppercase tracking-widest opacity-70">
                       {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </p>
+                    </span>
                   </div>
 
-                  {/* Enhanced AI message features */}
-                  {message.role === 'ai' && (
-                    <>
-
-                      {/* Follow-up Suggestions */}
-                      {message.follow_up_suggestions && message.follow_up_suggestions.length > 0 && (
-                        <div className="px-3 pb-3 space-y-2">
-                          <p className="text-xs text-muted-foreground flex items-center gap-1.5 mb-2">
-                            <Lightbulb className="w-3.5 h-3.5" />
-                            Continue exploring:
-                          </p>
-                          {message.follow_up_suggestions.map((suggestion, idx) => (
-                            <button
-                              key={idx}
-                              onClick={() => handleQuickQuestion(suggestion)}
-                              disabled={isLoading}
-                              className="w-full text-left text-xs p-2.5 rounded-lg glass-card
-                                       hover:bg-primary/5 transition-all duration-200
-                                       disabled:opacity-50 disabled:cursor-not-allowed
-                                       text-foreground font-medium"
-                            >
-                              {suggestion}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </>
+                  {/* Enhanced AI message features - more compact */}
+                  {message.role === 'ai' && message.follow_up_suggestions && message.follow_up_suggestions.length > 0 && (
+                    <div className="mt-3 pt-3 border-t border-slate-100 space-y-2">
+                      <p className="text-[9px] font-black text-primary uppercase tracking-[0.1em] flex items-center gap-1.5">
+                        <Lightbulb className="w-3 h-3" />
+                        Next Steps
+                      </p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {message.follow_up_suggestions.map((suggestion, idx) => (
+                          <button
+                            key={idx}
+                            onClick={() => handleQuickQuestion(suggestion)}
+                            disabled={isLoading}
+                            className="text-left text-[10px] py-1.5 px-3 rounded-lg border border-slate-100 
+                                     bg-slate-50/50 hover:bg-primary hover:text-white transition-all duration-200
+                                     disabled:opacity-50 disabled:cursor-not-allowed
+                                     text-slate-700 font-bold"
+                          >
+                            {suggestion}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                   )}
                 </div>
               </motion.div>
@@ -249,13 +366,16 @@ export function AIContextChat({ scenarioId, currentTaskId, context, onTaskComple
               animate={{ opacity: 1 }}
               className="flex gap-3"
             >
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center">
-                <Bot className="w-4 h-4 text-white" />
+              <div className="w-8 h-8 flex items-center justify-center shrink-0">
+                <img src="/penman.png" alt="P" className="w-full h-full object-contain" />
               </div>
-              <div className="flex-1 max-w-[80%] p-3 rounded-2xl glass-card">
+              <div className="px-4 py-3 rounded-xl rounded-tl-none bg-white text-slate-800 shadow-md">
                 <div className="flex items-center gap-2">
-                  <Loader2 className="w-4 h-4 text-primary animate-spin" />
-                  <span className="text-sm text-muted-foreground"><Translate>Thinking...</Translate></span>
+                  <div className="flex gap-1">
+                    <div className="w-1 h-1 rounded-full bg-primary animate-bounce"></div>
+                    <div className="w-1 h-1 rounded-full bg-primary animate-bounce [animation-delay:0.2s]"></div>
+                    <div className="w-1 h-1 rounded-full bg-primary animate-bounce [animation-delay:0.4s]"></div>
+                  </div>
                 </div>
               </div>
             </motion.div>
@@ -263,34 +383,43 @@ export function AIContextChat({ scenarioId, currentTaskId, context, onTaskComple
         </div>
       </ScrollArea>
 
-      {/* Input */}
-      <div className="p-4 border-t border-primary/10">
-        <div className="flex gap-2">
+      {/* Input - more compact and rounded */}
+      <div className="p-4 bg-white/5 border-t border-white/5">
+        <div className="flex gap-2 items-center bg-white/10 backdrop-blur-md p-1.5 rounded-full border border-white/10 ring-1 ring-white/5 shadow-inner">
+          <Button
+            onClick={handleMicToggle}
+            variant="ghost"
+            size="icon"
+            className={cn(
+              "h-9 w-9 rounded-full shrink-0 transition-all duration-300",
+              listening ? "bg-red-500/20 text-red-500 animate-pulse" : "text-white/60 hover:text-white hover:bg-white/10"
+            )}
+          >
+            {listening ? <Mic className="w-4 h-4" /> : <MicOff className="w-4 h-4 text-white/30" />}
+          </Button>
           <Input
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyPress={handleKeyPress}
-            placeholder="Ask about the topic or simulation..."
-            className="flex-1 glass-input text-foreground placeholder:text-muted-foreground"
+            placeholder="Ask Penman..."
+            className="flex-1 h-10 bg-transparent border-none text-white text-[13px] focus-visible:ring-0 placeholder:text-white/20 font-medium px-4"
             disabled={isLoading}
           />
           <Button
             onClick={handleSend}
             disabled={!input.trim() || isLoading}
-            className="bg-gradient-to-r from-primary to-accent hover:opacity-90 transition-opacity"
+            className={cn(
+              "h-9 w-9 rounded-full shrink-0 p-0 transition-all duration-300 shadow-lg",
+              "bg-white hover:bg-white text-slate-900",
+              "hover:scale-105 active:scale-95"
+            )}
           >
             {isLoading ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
+              <Loader2 className="w-4 h-4 animate-spin text-slate-900" />
             ) : (
-              <Send className="w-4 h-4" />
+              <Send className="w-4 h-4 text-slate-900" />
             )}
           </Button>
-        </div>
-        <div className="flex items-center justify-center gap-2 mt-3">
-          <Sparkles className="w-3.5 h-3.5 text-primary" />
-          <p className="text-xs text-muted-foreground">
-            <Translate>AI-Powered Learning Assistant</Translate>
-          </p>
         </div>
       </div>
     </div>

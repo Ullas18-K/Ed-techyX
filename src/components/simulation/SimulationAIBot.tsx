@@ -12,11 +12,11 @@ interface SimulationAIBotProps {
   onTaskComplete?: (taskId: number) => void;
 }
 
-export function SimulationAIBot({ 
-  scenarioId, 
-  currentTaskId, 
-  context, 
-  onTaskComplete 
+export function SimulationAIBot({
+  scenarioId,
+  currentTaskId,
+  context,
+  onTaskComplete
 }: SimulationAIBotProps) {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -29,16 +29,16 @@ export function SimulationAIBot({
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className="fixed bottom-24 right-6 z-50 w-[420px] h-[600px] shadow-2xl"
+            transition={{ type: 'spring', damping: 25, stiffness: 350 }}
+            className="fixed bottom-24 right-6 z-50 w-[380px] h-[550px] group"
           >
-            <div className="relative w-full h-full rounded-2xl overflow-hidden glass-strong border border-primary/20">
-              {/* Close Button */}
+            <div className="relative w-full h-full rounded-[2rem] overflow-hidden bg-slate-900/60 backdrop-blur-2xl border border-white/10 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.5)] ring-1 ring-white/5">
+              {/* Close Button - more integrated */}
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={() => setIsOpen(false)}
-                className="absolute top-3 right-3 z-10 rounded-full w-8 h-8 glass-card hover:bg-destructive/20"
+                className="absolute top-4 right-4 z-[60] rounded-xl w-8 h-8 hover:bg-white/10 text-white/50 hover:text-white transition-all p-0"
               >
                 <X className="w-4 h-4" />
               </Button>
@@ -64,61 +64,49 @@ export function SimulationAIBot({
       >
         <Button
           onClick={() => setIsOpen(!isOpen)}
+          variant="ghost"
           className={cn(
-            "w-16 h-16 rounded-full shadow-2xl transition-all duration-300",
-            "bg-gradient-to-br from-primary via-primary to-accent",
-            "hover:shadow-primary/50 hover:scale-110",
-            "relative overflow-hidden group"
+            "w-20 h-20 rounded-full transition-all duration-300 p-0",
+            "hover:scale-110",
+            "relative overflow-visible group bg-transparent hover:bg-transparent border-none shadow-none"
           )}
         >
-          {/* Animated background pulse */}
-          <motion.div
-            className="absolute inset-0 bg-white/20 rounded-full"
-            animate={{
-              scale: [1, 1.3, 1],
-              opacity: [0.5, 0, 0.5],
-            }}
-            transition={{
-              duration: 2,
-              repeat: Infinity,
-              ease: "easeInOut"
-            }}
-          />
+          {/* Flare removed as per user request (no blur/bg) */}
 
           {/* Icon */}
           <AnimatePresence mode="wait">
             {isOpen ? (
               <motion.div
                 key="close"
-                initial={{ rotate: -90, opacity: 0 }}
-                animate={{ rotate: 0, opacity: 1 }}
-                exit={{ rotate: 90, opacity: 0 }}
-                transition={{ duration: 0.2 }}
+                initial={{ scale: 0, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0, opacity: 0 }}
+                className="relative z-10 w-12 h-12 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center shadow-lg border border-white/20"
               >
-                <X className="w-6 h-6 text-white relative z-10" />
+                <X className="w-6 h-6 text-white" />
               </motion.div>
             ) : (
               <motion.div
                 key="open"
-                initial={{ rotate: 90, opacity: 0 }}
-                animate={{ rotate: 0, opacity: 1 }}
-                exit={{ rotate: -90, opacity: 0 }}
-                transition={{ duration: 0.2 }}
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ y: 20, opacity: 0 }}
+                className="relative z-10 w-full h-full"
               >
-                <MessageCircle className="w-6 h-6 text-white relative z-10" />
+                <img src="/penman.png" alt="Penman" className="w-full h-full object-contain drop-shadow-2xl" />
               </motion.div>
             )}
           </AnimatePresence>
 
-          {/* Notification Dot (optional - can be used for new messages) */}
+          {/* Notification Dot */}
           {!isOpen && (
             <motion.div
-              className="absolute top-1 right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white"
+              className="absolute top-2 right-2 w-4 h-4 bg-green-500 rounded-full border-2 border-white shadow-lg z-20"
               animate={{
-                scale: [1, 1.2, 1],
+                scale: [1, 1.15, 1],
               }}
               transition={{
-                duration: 1.5,
+                duration: 2,
                 repeat: Infinity,
                 ease: "easeInOut"
               }}
