@@ -20,16 +20,11 @@ class ScenarioRequest(BaseModel):
     difficulty: Optional[str] = Field("medium", description="easy, medium, hard")
 
 class ConversationRequest(BaseModel):
-    """
-    Request for conversational AI guidance.
-    
-    Note: This is STATELESS - no session_history stored.
-    All context must be provided in each request.
-    """
     scenario_id: str
     current_task_id: int
     student_input: str
-    context: Optional[Dict[str, Any]] = None  # Contains topic, grade, subject, simulation_state
+    context: Optional[Dict[str, Any]] = None
+    session_history: Optional[List[str]] = []
 
 class QuizRequest(BaseModel):
     topic: str
@@ -101,6 +96,13 @@ class QuizQuestion(BaseModel):
     correctAnswer: str
     explanation: str
 
+class Derivation(BaseModel):
+    """Derivation or explanation for a formula/equation."""
+    model_config = ConfigDict(populate_by_name=True)
+    
+    formula: str  # The formula being derived/explained
+    derivation: str  # Step-by-step derivation or explanation
+
 class ScenarioResponse(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
     
@@ -113,14 +115,12 @@ class ScenarioResponse(BaseModel):
     scenario_description: str = Field(..., alias="scenarioDescription")
     key_concepts: List[ConceptStep] = Field(..., alias="keyConcepts")
     learning_objectives: List[ConceptStep] = Field(..., alias="learningObjectives")
-    tasks: List[Task]
-    simulation_config: SimulationConfig = Field(..., alias="simulationConfig")
     interaction_types: List[str] = Field(..., alias="interactionTypes")
-    progress_steps: List[LearningStep] = Field(..., alias="progressSteps")
     quiz: List[QuizQuestion]
     
     notes: Optional[str] = ""
     formulas: Optional[List[str]] = []
+    formulas_and_derivations_markdown: Optional[str] = Field("", alias="formulasAndDerivationsMarkdown")
     estimated_duration: str = Field("15-20 minutes", alias="estimatedDuration")
     difficulty_level: str = Field("medium", alias="difficultyLevel")
     ncert_chapter: Optional[str] = Field("", alias="ncertChapter")
@@ -133,25 +133,10 @@ class RAGSource(BaseModel):
     excerpt: str = ""
 
 class ConversationResponse(BaseModel):
-    """
-    Enhanced conversational response with RAG integration.
-    
-    Features:
-    - Real-time AI-generated response
-    - RAG source citations
-    - Follow-up suggestions
-    - Confidence scoring
-    """
     response: str
-    action: str = "answer"  # "answer", "hint", "redirect", "error", "encourage"
+    action: str  # "continue", "next_task", "hint", "repeat"
     task_complete: bool = False
     next_task_id: Optional[int] = None
-    
-    # Enhanced fields
-    rag_used: bool = False
-    rag_sources: Optional[List[RAGSource]] = None
-    confidence: float = 0.5
-    follow_up_suggestions: Optional[List[str]] = None
 
 class QuizResponse(BaseModel):
     quiz_id: str

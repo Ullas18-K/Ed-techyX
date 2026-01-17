@@ -84,8 +84,10 @@ const userSchema = new mongoose.Schema({
 
 // Update the updatedAt timestamp before saving
 userSchema.pre('save', function(next) {
-  this.updatedAt = Date.now();
-  next();
+  this.updatedAt = new Date();
+  if (typeof next === 'function') {
+    next();
+  }
 });
 
 // Create indexes for faster queries

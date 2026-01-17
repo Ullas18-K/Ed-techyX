@@ -17,10 +17,15 @@ from models.schemas import (
     ConversationRequest, ConversationResponse,
     QuizRequest, QuizResponse
 )
+from models.pyq_schemas import PYQRequest, PYQResponse
 from rag.retriever import RAGRetriever
 from rag.pdf_processor import process_ncert_directory
 from agents.scenario_gen import ScenarioGenerator
 from agents.conversation import ConversationGuide
+from agents.pyq_generator import PYQGenerator
+from utils.pyq_ingestion import ingest_all_pyqs
+from fastapi.responses import FileResponse
+import os
 
 # Configure logging
 logging.basicConfig(
@@ -54,11 +59,12 @@ app.add_middleware(
 rag_retriever: Optional[RAGRetriever] = None
 scenario_generator: Optional[ScenarioGenerator] = None
 conversation_guide: Optional[ConversationGuide] = None
+pyq_generator: Optional[PYQGenerator] = None
 
 @app.on_event("startup")
 async def startup_event():
     """Initialize services on startup."""
-    global rag_retriever, scenario_generator, conversation_guide
+    global rag_retriever, scenario_generator, conversation_guide, pyq_generator
     
     logger.info("Starting AI Service...")
     logger.info(f"Environment: {settings.ENVIRONMENT}")
@@ -72,6 +78,7 @@ async def startup_event():
         # Initialize agents
         scenario_generator = ScenarioGenerator(rag_retriever)
         conversation_guide = ConversationGuide(rag_retriever)  # Pass RAG to conversation guide
+        pyq_generator = PYQGenerator(rag_retriever)  # Initialize PYQ generator
         
         logger.info("All agents initialized successfully")
         
@@ -287,6 +294,130 @@ async def clear_vector_store():
     except Exception as e:
         logger.error(f"Error clearing vector store: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# =====================================================
+# PYQ (Previous Year Questions) Endpoints
+# =====================================================
+
+@app.post("/api/questions/practice", response_model=PYQResponse)
+async def get_practice_questions(request: PYQRequest):
+    """
+    Get practice questions for a topic using hybrid RAG + Gemini approach.
+    
+    - Retrieves real previous year questions from vector DB
+    - Generates supplementary questions with Gemini if needed
+    - Returns questions with images, answers, and explanations
+    """
+    try:
+        logger.info(f"PYQ request: {request.topic} (Grade {request.grade})")
+        
+        if not pyq_generator:
+            raise HTTPException(status_code=500, detail="PYQ generator not initialized")
+        
+        response = await pyq_generator.get_practice_questions(request)
+        
+        logger.info(f"Returning {response.total_count} questions ({response.pyq_count} PYQ, {response.generated_count} generated)")
+        return response
+        
+    except Exception as e:
+        logger.error(f"Error getting practice questions: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/assets/pyqs/{file_path:path}")
+async def get_pyq_image(file_path: str):
+    """
+    Serve PYQ images (diagrams, circuits, etc.)
+    
+    Example: /api/assets/pyqs/images/ray_optics_2023_p1_img0.png
+    """
+    try:
+        # Construct full path
+        full_path = os.path.join(settings.BASE_DIR, "data/pyqs", file_path)
+        
+        # Security check - ensure path is within pyqs directory
+        if not os.path.abspath(full_path).startswith(os.path.abspath(os.path.join(settings.BASE_DIR, "data/pyqs"))):
+            raise HTTPException(status_code=403, detail="Access denied")
+        
+        # Check if file exists
+        if not os.path.exists(full_path):
+            raise HTTPException(status_code=404, detail="Image not found")
+        
+        # Determine media type
+        if full_path.endswith('.png'):
+            media_type = "image/png"
+        elif full_path.endswith('.jpg') or full_path.endswith('.jpeg'):
+            media_type = "image/jpeg"
+        else:
+            media_type = "image/png"
+        
+        return FileResponse(full_path, media_type=media_type)
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error serving image {file_path}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/admin/ingest-pyqs")
+async def ingest_pyqs(background_tasks: BackgroundTasks):
+    """
+    Ingest all PYQ PDFs from data/pyqs/pdfs directory.
+    
+    This:
+    1. Extracts questions and answers from PDFs
+    2. Extracts and saves images
+    3. Analyzes images with Gemini Vision
+    4. Stores in vector DB for retrieval
+    
+    Place your PDF files in: ai-service/data/pyqs/pdfs/
+    """
+    try:
+        if not rag_retriever:
+            raise HTTPException(status_code=500, detail="RAG retriever not initialized")
+        
+        # Check if directory exists and has PDFs
+        pdf_dir = os.path.join(settings.BASE_DIR, "data/pyqs/pdfs")
+        if not os.path.exists(pdf_dir):
+            raise HTTPException(
+                status_code=404,
+                detail=f"Directory '{pdf_dir}' not found. Create it and add PYQ PDFs."
+            )
+        
+        pdf_files = list(Path(pdf_dir).glob("*.pdf"))
+        if not pdf_files:
+            raise HTTPException(
+                status_code=404,
+                detail=f"No PDF files found in '{pdf_dir}'. Add some PYQ PDFs first."
+            )
+        
+        # Process in background
+        background_tasks.add_task(ingest_pyqs_background)
+        
+        return {
+            "message": f"Processing {len(pdf_files)} PYQ PDFs in background",
+            "status": "started",
+            "pdf_count": len(pdf_files)
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error starting PYQ ingestion: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+async def ingest_pyqs_background():
+    """Background task to ingest PYQ PDFs."""
+    try:
+        logger.info("Starting PYQ ingestion...")
+        results = await ingest_all_pyqs(rag_retriever)
+        logger.info(f"PYQ ingestion complete: {results}")
+    except Exception as e:
+        logger.error(f"Error in background PYQ ingestion: {e}")
+
 
 # Error handlers
 

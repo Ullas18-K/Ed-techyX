@@ -35,8 +35,6 @@ class ConversationGuide:
         """
         self.model = None
         self.rag_retriever = rag_retriever
-        self.model = None
-        self.rag_retriever = rag_retriever
         
         if settings.GCP_PROJECT_ID and settings.GOOGLE_APPLICATION_CREDENTIALS:
             try:
@@ -77,10 +75,11 @@ class ConversationGuide:
             logger.info(f"📝 Processing question: '{request.student_input[:50]}...'")
             
             # Extract context from request (not from stored memory)
-            topic = request.context.get("topic", "")
-            grade = request.context.get("grade", 10)
-            subject = request.context.get("subject", "science")
-            simulation_state = request.context.get("simulation_state", {})
+            context = request.context or {}
+            topic = context.get("topic", "")
+            grade = context.get("grade", 10)
+            subject = context.get("subject", "science")
+            simulation_state = context.get("simulation_state", {})
             
             if not self.model:
                 logger.error("❌ Gemini model not initialized")
@@ -164,6 +163,9 @@ class ConversationGuide:
         try:
             prompt = get_boundary_check_prompt(question, topic, strictness)
             
+            if not self.model:
+                raise Exception("Model not initialized")
+            
             response = self.model.generate_content(
                 prompt,
                 generation_config={
@@ -173,7 +175,10 @@ class ConversationGuide:
             )
             
             # Parse JSON response
-            response_text = response.text.strip()
+            if hasattr(response, 'text'):
+                response_text = response.text.strip()  # type: ignore
+            else:
+                response_text = str(response).strip()
             
             # Clean JSON if wrapped in markdown
             if response_text.startswith("```json"):
@@ -341,6 +346,9 @@ Grade {grade} Indian curriculum. Ensure accuracy and educational value.
             Generated response text
         """
         try:
+            if not self.model:
+                raise Exception("Model not initialized")
+            
             generation_config = {
                 "temperature": 0.7,  # Balanced creativity
                 "top_p": 0.9,
@@ -353,7 +361,10 @@ Grade {grade} Indian curriculum. Ensure accuracy and educational value.
                 generation_config=generation_config
             )
             
-            return response.text.strip()
+            if hasattr(response, 'text'):
+                return response.text.strip()  # type: ignore
+            else:
+                return str(response).strip()
             
         except Exception as e:
             logger.error(f"Gemini generation failed: {e}")
@@ -377,6 +388,9 @@ Grade {grade} Indian curriculum. Ensure accuracy and educational value.
             List of follow-up question suggestions
         """
         try:
+            if not self.model:
+                return []
+            
             prompt = f"""
 Based on this explanation about {topic}:
 "{response[:200]}..."
@@ -396,9 +410,10 @@ Make them specific to {topic} and encourage exploration.
             )
             
             # Parse follow-ups
+            response_text = follow_up_response.text.strip() if hasattr(follow_up_response, 'text') else str(follow_up_response).strip()  # type: ignore
             follow_ups = [
                 line.strip()
-                for line in follow_up_response.text.strip().split('\n')
+                for line in response_text.split('\n')
                 if line.strip() and not line.strip().startswith('#')
             ]
             
@@ -510,22 +525,6 @@ Make them specific to {topic} and encourage exploration.
             rag_used=False,
             confidence=0.0
         )
-        
-        # Check for completion indicators
-        if any(word in input_lower for word in ["done", "finished", "complete", "yes", "ready", "next"]):
-            if "great" in response_lower or "excellent" in response_lower or "perfect" in response_lower:
-                return "next_task"
-        
-        # Check for hint request
-        if any(word in input_lower for word in ["hint", "help", "stuck", "don't know", "confused"]):
-            return "hint"
-        
-        # Check for repeat request
-        if any(word in input_lower for word in ["repeat", "again", "what", "didn't understand"]):
-            return "repeat"
-        
-        # Default: continue
-        return "continue"
     
     def _check_task_completion(self, student_input: str, action: str) -> bool:
         """Check if task is complete based on input and action."""

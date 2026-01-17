@@ -106,140 +106,11 @@ JSON Structure:
     ... (4-6 objectives - each must name ACTUAL topic elements, NEVER generic variables)
   ],
   
-  "tasks": [
-    {{
-      "id": 1,
-      "instruction": "First, familiarize yourself with the controls. Adjust the [specific control] slider and observe what happens.",
-      "checkQuestion": "What changes do you notice when you increase [variable]?",
-      "hint": "Look at the [output] indicator. Try setting [control] to maximum and minimum values.",
-      "encouragement": "Great exploration! You're learning how [NCERT concept] works!",
-      "expectedAction": "explore_controls"
-    }},
-    {{
-      "id": 2,
-      "instruction": "Now run your first experiment. Set [control1] to [value] and [control2] to [value], then observe the results.",
-      "checkQuestion": "What happened to [output]? Why do you think this occurred?",
-      "hint": "According to NCERT, [concept] requires [conditions]. Check if those are met.",
-      "encouragement": "Excellent! You're thinking like a scientist!",
-      "expectedAction": "run_experiment_1"
-    }},
-    {{
-      "id": 3,
-      "instruction": "Test extreme conditions. Try minimum values for all controls.",
-      "checkQuestion": "What limits [process]? What's the minimum requirement?",
-      "hint": "NCERT mentions that [concept] cannot occur without [essential element].",
-      "encouragement": "Perfect! You've discovered a key limitation!",
-      "expectedAction": "test_extremes"
-    }},
-    {{
-      "id": 4,
-      "instruction": "Find the optimal balance. Adjust all controls to achieve maximum [output].",
-      "checkQuestion": "What combination gave the best results?",
-      "hint": "Consider the relationship between [variable1] and [variable2] mentioned in NCERT.",
-      "encouragement": "Amazing work! You've optimized the conditions!",
-      "expectedAction": "find_optimal"
-    }},
-    {{
-      "id": 5,
-      "instruction": "Understand cause and effect. Change ONLY [one control] while keeping others constant.",
-      "checkQuestion": "How does this single variable impact [output]?",
-      "hint": "This isolates the effect of [variable] on [outcome], a key scientific method.",
-      "encouragement": "Brilliant! You're using controlled experiments!",
-      "expectedAction": "controlled_experiment"
-    }}
-    ... (5-7 progressive tasks total)
-  ],
-  
-  "simulationConfig": {{
-    "type": "{simulation_type}",
-    "title": "[Descriptive title - MUST include topic name]",
-    "description": "[2-3 sentences explaining WHAT SPECIFICALLY this simulation shows about {topic}. For human eye: 'Demonstrates how the eye lens adjusts focal length to form clear images on retina'. For photosynthesis: 'Shows how chloroplasts convert light energy into glucose']",
-    "controls": [
-      {{
-        "name": "[ACTUAL_VARIABLE_NAME_from_topic]",
-        "label": "[Scientific Term from NCERT]",
-        "controlType": "slider",  // Use "slider" for numeric controls, "dropdown" for categorical selections
-        "min": [realistic minimum - ONLY for numeric/slider controls],
-        "max": [realistic maximum - ONLY for numeric/slider controls],
-        "default": [typical value - number for slider, string for dropdown],
-        "unit": "[correct unit - cm, lux, %, ppm, etc. - ONLY for numeric controls]",
-        "step": [appropriate increment - ONLY for numeric controls],
-        "options": ["option1", "option2", ...],  // ONLY for dropdown controls - omit for sliders
-        "description": "[2-3 sentences explaining WHAT this represents in {topic}. Example for human eye 'object_distance': 'Distance of the object from the eye lens. When varied, this demonstrates accommodation - the lens adjusts to maintain clear focus.' Example for photosynthesis 'light_intensity': 'Amount of light energy available for chlorophyll to absorb. Directly affects the rate of light-dependent reactions.']",
-        "effect": "[SPECIFIC effect on topic. Example: 'Changing object distance causes ciliary muscles to adjust lens curvature' or 'Increasing light intensity boosts electron excitation in chlorophyll']"
-      }}
-      
-      CONTROL TYPE RULES:
-      - Use "slider" (with min/max/unit/step) for: temperature, light intensity, concentration, distance, mass, volume, time, etc.
-      - Use "dropdown" (with options array, string default, NO min/max/unit/step) for: reactant selection, type of lens, organism type, etc.
-      
-      EXAMPLES OF GOOD CONTROLS:
-      
-      For HUMAN EYE (all sliders):
-      - "object_distance" (Label: "Object Distance (cm)", min: 25, max: 600, default: 100, unit: "cm")
-      - "lens_power" (Label: "Lens Power (diopters)", min: -10, max: 10, default: 0, unit: "D")
-      - "light_intensity" (Label: "Ambient Light (lux)", min: 0, max: 10000, default: 500, unit: "lux")
-      
-      For PHOTOSYNTHESIS (all sliders):
-      - "light_intensity" (Label: "Light Intensity (klux)", min: 0, max: 100, default: 30, unit: "klux")
-      - "co2_concentration" (Label: "CO₂ Concentration (ppm)", min: 0, max: 1000, default: 400, unit: "ppm")
-      - "temperature" (Label: "Temperature (°C)", min: 0, max: 50, default: 25, unit: "°C")
-      
-      For CHEMICAL REACTIONS (mix of dropdown and slider):
-      - {{"name": "reactant_a", "label": "First Reactant", "controlType": "dropdown", "default": "Calcium Oxide (CaO)", "options": ["Calcium Oxide (CaO)", "Magnesium Oxide (MgO)", "Sodium Oxide (Na₂O)"], "description": "Select the metal oxide for combination reaction"}}
-      - {{"name": "reactant_b", "label": "Second Reactant", "controlType": "dropdown", "default": "Water (H₂O)", "options": ["Water (H₂O)", "Oxygen (O₂)", "Hydrogen (H₂)"], "description": "Select the second reactant"}}
-      - {{"name": "temperature", "label": "Temperature (°C)", "controlType": "slider", "min": 0, "max": 500, "default": 25, "unit": "°C", "step": 5, "description": "Reaction temperature"}}
-      
-      ❌ NEVER USE: "factor1", "factor2", "primary factor", "secondary factor", "input1", "variable_x"
-      ✅ ALWAYS USE: Actual scientific terms from the topic
-      ✅ SET controlType CORRECTLY: "slider" for numbers, "dropdown" for selections
-      
-      ... (3-6 controls based on ACTUAL variables in {topic})
-    ],
-    "outputs": ["[specific_output1_from_topic]", "[specific_output2]", "[specific_measurement]"],
-    "visualElements": ["[specific_visual1_from_topic]", "[specific_visual2]", ...],
-    "instructions": "[3-4 sentences with SPECIFIC instructions for THIS topic's simulation. Tell students WHAT to look for that's unique to {topic}]",
-    "controlGuide": "[2-3 sentences explaining the BEST WAY to explore THIS specific topic. Example for human eye: 'Start by setting object distance to 25cm (near point) and observe lens curvature. Then increase distance to infinity and note how lens flattens.' Example for photosynthesis: 'Begin with medium light intensity and CO₂ at 400ppm (atmospheric level). Gradually increase light while monitoring oxygen bubble production rate.']"
-  }},
-  
   "interactionTypes": [
     "Run experiments",
     "Make choices",
     "Observe outcomes",
     "Answer questions"
-  ],
-  
-  "progressSteps": [
-    {{
-      "stepNumber": 1,
-      "title": "Explore the Controls",
-      "description": "Familiarize yourself with all available controls and their effects",
-      "isCompleted": false
-    }},
-    {{
-      "stepNumber": 2,
-      "title": "Run Your First Experiment",
-      "description": "Adjust the parameters and observe what happens",
-      "isCompleted": false
-    }},
-    {{
-      "stepNumber": 3,
-      "title": "Test Extremes",
-      "description": "Try minimum and maximum values to understand limits",
-      "isCompleted": false
-    }},
-    {{
-      "stepNumber": 4,
-      "title": "Find Optimal Conditions",
-      "description": "Achieve the best possible output by balancing all factors",
-      "isCompleted": false
-    }},
-    {{
-      "stepNumber": 5,
-      "title": "Understand Cause and Effect",
-      "description": "Observe how changing one factor impacts the outputs",
-      "isCompleted": false
-    }}
   ],
   
   "quiz": [
@@ -281,43 +152,115 @@ JSON Structure:
     1 question: Applications / calculations / defects
   ],
   
-  "notes": "[COMPREHENSIVE SUMMARY - 200-300 words minimum]
+  "notes": "[COMPREHENSIVE MARKDOWN-FORMATTED NOTES - 400-600 words]
   
-  Write a detailed summary including:
-  • Definition and importance of {topic}
-  • Key components/parts with their functions
-  • Step-by-step process/mechanism
-  • Factors affecting it
-  • Common issues/defects/variations (if applicable)
-  • Real-world applications from NCERT
-  • Important facts students must remember
+  CRITICAL: Use Markdown formatting with headings (##, ###), bullet points, bold text, etc.
+  Structure your notes like a ChatGPT/Gemini response with clear sections.
+  
+  Required sections (use markdown ## headings):
+  ## Overview
+  [2-3 sentences defining {topic} and why it's important]
+  
+  ## Key Components/Structure
+  [Detailed list of parts/components with their specific functions]
+  - **Component 1**: Function and significance
+  - **Component 2**: Function and significance
+  
+  ## Process/Mechanism
+  ### Step 1: [Specific step name]
+  [Detailed explanation of what happens]
+  
+  ### Step 2: [Next step]
+  [Detailed explanation]
+  
+  ## Important Factors
+  [List and explain factors that affect {topic}]
+  - **Factor 1**: How it affects the process
+  - **Factor 2**: How it affects the process
+  
+  ## Common Issues/Defects/Variations
+  [If applicable - e.g., eye defects, reaction types, etc.]
+  
+  ## Real-World Applications
+  [NCERT-based applications and importance]
+  
+  ## Formulas and Derivations
+  [For EACH formula in the formulas array, provide a brief explanation/derivation here in the notes]
+  - **Formula 1**: Brief explanation of what it means and how to use it
+  - **Formula 2**: Brief derivation or explanation
+  
+  ## Key Takeaways
+  [Summary points students must remember]
   
   Example for HUMAN EYE:
-  'The human eye is a spherical sensory organ that enables vision by forming images on the retina. Key components: Cornea (transparent outer layer, maximum refraction), Iris (colored diaphragm controlling light entry via pupil), Lens (adjustable for focusing - accommodation), Retina (light-sensitive layer with rods for dim light and cones for color vision), Optic nerve (transmits signals to brain).
+  '## Overview
+  The human eye is a sophisticated optical instrument that enables vision by forming real, inverted images on the retina. It works on the principle of refraction of light through a lens system and is one of the most important sense organs.
   
-  Process: Light enters through cornea → Refracted and focused by lens → Forms inverted real image on retina → Photoreceptors convert light to electrical signals → Brain interprets image. Accommodation allows focusing from 25cm (near point) to infinity (far point) by ciliary muscles adjusting lens curvature.
+  ## Key Components and Structure
+  - **Cornea**: Transparent outer covering that provides most of the refraction of light entering the eye
+  - **Iris**: Colored diaphragm that controls the amount of light entering through the pupil
+  - **Pupil**: Opening in the iris that expands in dim light and contracts in bright light
+  - **Crystalline Lens**: Transparent, flexible lens whose curvature can be adjusted by ciliary muscles
+  - **Retina**: Light-sensitive inner layer containing photoreceptor cells (rods and cones)
+  - **Rods**: Sensitive to dim light but cannot distinguish colors
+  - **Cones**: Sensitive to bright light and responsible for color vision
+  - **Optic Nerve**: Transmits electrical signals from retina to the brain
   
-  Common defects: Myopia (nearsightedness, corrected with concave lens), Hypermetropia (farsightedness, corrected with convex lens), Presbyopia (age-related loss of accommodation).
+  ## How Vision Works
+  ### Step 1: Light Entry and Refraction
+  Light from an object enters the eye through the cornea, which provides maximum refraction due to its curved surface and different refractive index.
   
-  Power of lens P = 1/f (in meters), measured in diopters (D).'
+  ### Step 2: Pupil Adjustment
+  The iris adjusts the pupil size based on light intensity - dilating in dim conditions and contracting in bright light to protect the retina.
   
-  For PHOTOSYNTHESIS:
-  'Photosynthesis is the process by which green plants convert light energy into chemical energy (glucose). Occurs in chloroplasts containing chlorophyll. Two stages: Light reactions (thylakoid membranes) - light energy splits water, releases O₂, produces ATP and NADPH. Dark reactions/Calvin cycle (stroma) - CO₂ fixation using ATP and NADPH to synthesize glucose.
+  ### Step 3: Lens Focusing (Accommodation)
+  The crystalline lens fine-tunes the focus by changing its curvature. Ciliary muscles contract to make the lens thicker (for near objects) or relax to make it thinner (for distant objects).
   
-  Overall equation: 6CO₂ + 6H₂O + Light energy → C₆H₁₂O₆ + 6O₂
+  ### Step 4: Image Formation
+  A real, inverted, and diminished image forms on the retina. Photoreceptors convert light into electrical impulses.
   
-  Limiting factors: Light intensity, CO₂ concentration, temperature, water availability, chlorophyll amount. Increasing a limiting factor boosts rate until another factor becomes limiting.
+  ### Step 5: Signal Transmission
+  The optic nerve carries these signals to the brain, which interprets them as an upright image.
   
-  Importance: Produces food for all living organisms, releases oxygen, maintains atmospheric balance, basis of all food chains.'
+  ## Range of Vision
+  - **Near Point**: Minimum distance for clear vision without strain = 25 cm for a normal eye
+  - **Far Point**: Maximum distance = infinity for a normal eye
+  - **Accommodation**: The ability to focus on objects at varying distances by adjusting lens curvature
+  
+  ## Common Vision Defects
+  ### Myopia (Nearsightedness)
+  - **Cause**: Eyeball elongated or lens too curved
+  - **Effect**: Image forms before retina; distant objects appear blurry
+  - **Correction**: Concave (diverging) lens
+  
+  ### Hypermetropia (Farsightedness)
+  - **Cause**: Eyeball too short or lens too flat
+  - **Effect**: Image forms behind retina; nearby objects appear blurry
+  - **Correction**: Convex (converging) lens
+  
+  ### Presbyopia
+  - **Cause**: Age-related loss of lens flexibility
+  - **Effect**: Difficulty focusing on nearby objects
+  - **Correction**: Bifocal lenses
+  
+  ## Key Takeaways
+  - The eye functions as a natural camera with adjustable focus
+  - Accommodation allows clear vision from 25 cm to infinity
+  - Cornea provides maximum refraction, lens provides fine adjustment
+  - Defects can be corrected using appropriate lenses (concave for myopia, convex for hypermetropia)'
   
   ",
   
   "formulas": [
-    "[ALL relevant equations/formulas for {topic}]",
+    "[COMPREHENSIVE LIST - Include ALL formulas from NCERT context AND any related formulas]",
+    "[Format: 'Formula Name: equation (where variable1=description, variable2=description)']",
+    "[If NCERT context contains formulas/equations, include them ALL]",
+    "[Even if no formulas in context, generate ALL relevant formulas for {topic}]",
     
     For HUMAN EYE:
-    "Power of lens: P = 1/f (where f is focal length in meters, P in diopters)",
-    "Lens formula: 1/f = 1/v - 1/u (where v=image distance, u=object distance)",
+    "Power of Lens: P = 1/f (where P = power in diopters (D), f = focal length in meters)",
+    "Lens Formula: 1/f = 1/v - 1/u (where f = focal length, v = image distance from lens, u = object distance from lens)",
+    "Magnification: m = h'/h = v/u (where h' = image height, h = object height, v = image distance, u = object distance)",
     "Magnification: m = v/u = h'/h",
     "For defects: Power needed = 1/far point (myopia) or 1/near point - 1/0.25 (hypermetropia)",
     
@@ -338,6 +281,36 @@ JSON Structure:
   "ncertChapter": "[Chapter name/number from NCERT if identifiable]",
   "ncertPageRefs": ["Page X", "Section Y"]
 }}
+
+═══════════════════════════════════════════════════════════════
+🔥 FINAL CRITICAL REQUIREMENTS 🔥
+═══════════════════════════════════════════════════════════════
+
+1. **NOTES SECTION (400-600 words)**:
+   - MUST use Markdown formatting (##, ###, -, **, etc.)
+   - MUST have clear section headings
+   - MUST be detailed like a ChatGPT/Gemini explanation
+   - Include: Overview, Components, Process steps, Factors, Issues/Defects, Applications, Key Takeaways
+   - Make it comprehensive enough to learn the topic from notes alone
+
+2. **FORMULAS SECTION**:
+   - Extract ALL formulas/equations from NCERT context
+   - If context shows formulas, include EVERY SINGLE ONE
+   - If no formulas in context, generate all relevant ones from your knowledge
+   - Include: mathematical formulas, chemical equations, relationships, ratios
+   - Format clearly with variable explanations
+   - NEVER leave empty - every science topic has related formulas/equations
+
+3. **CONTROL NAMES**:
+   - NEVER: "factor1", "factor2", "primary_factor"  
+   - ALWAYS: Actual scientific terms (e.g., "light_intensity", "object_distance", "lens_power")
+
+4. **QUIZ QUESTIONS**:
+   - Test specific knowledge of {topic}
+   - Include structure/components, mechanism, experimental observations, calculations
+   - Reference NCERT content directly
+
+═══════════════════════════════════════════════════════════════
 
 CRITICAL SUCCESS FACTORS:
 ✓ ALL content must come from NCERT context provided
@@ -571,3 +544,50 @@ def get_enhanced_conversation_prompt(
         rag_instruction=rag_instruction,
         simulation_state=simulation_state
     )
+
+# Derivations and formulas prompt (separate API call for markdown format)
+DERIVATIONS_AND_FORMULAS_PROMPT = """You are an expert science teacher creating comprehensive formula explanations and derivations for {topic} at Grade {grade} level.
+
+Based on this NCERT context:
+{context}
+
+Provide ALL relevant formulas and their complete step-by-step derivations for {topic}. Use proper markdown formatting with:
+- Mathematical symbols (subscripts, superscripts, Greek letters, special characters) - DO NOT remove or clean them
+- Headings (##, ###) for organization
+- Bold (**text**) for emphasis
+- Bullet points and numbered lists for steps
+- LaTeX-style notation where appropriate (e.g., v₀, ΔE, λ, θ)
+
+Structure your response as:
+
+## Formulas for {topic}
+
+### Formula 1: [Name]
+**Equation**: [Write the formula with all symbols]
+
+**Derivation**:
+1. [Step 1 with explanation]
+2. [Step 2 with explanation]
+3. [Continue until complete derivation]
+
+**Where**:
+- [Variable 1] = [meaning and unit]
+- [Variable 2] = [meaning and unit]
+
+**Applications**: [When and how this formula is used]
+
+---
+
+### Formula 2: [Name]
+[Repeat same structure]
+
+IMPORTANT:
+- Include ALL formulas mentioned in NCERT context
+- Provide complete derivations with clear logical steps
+- Use actual mathematical symbols (don't replace them with text)
+- Explain physical meaning of each step
+- Include practical applications and examples
+- Make it comprehensive (aim for 500-800 words total)
+
+DO NOT format this as JSON. Return ONLY markdown text.
+"""

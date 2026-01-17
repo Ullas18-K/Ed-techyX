@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import { 
   BookOpen, 
   GraduationCap, 
@@ -23,6 +24,7 @@ interface LearningPlanScreenProps {
 export function LearningPlanScreen({ onStart }: LearningPlanScreenProps) {
   const { currentScenario } = useLearningStore();
   const [isStudyRoomModalOpen, setIsStudyRoomModalOpen] = useState(false);
+  const navigate = useNavigate();
 
   if (!currentScenario) return null;
 
@@ -231,7 +233,7 @@ export function LearningPlanScreen({ onStart }: LearningPlanScreenProps) {
             <Button
               variant="hero"
               size="sm"
-              onClick={onStart}
+              onClick={() => navigate('/optics')}
               className="gap-2 rounded-lg w-full text-xs h-9"
             >
               <Play className="w-3.5 h-3.5" />

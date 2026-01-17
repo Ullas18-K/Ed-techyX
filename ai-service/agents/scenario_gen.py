@@ -9,10 +9,126 @@ from google.oauth2 import service_account
 
 from config.settings import settings
 from models.schemas import ScenarioRequest, ScenarioResponse
-from prompts.templates import get_scenario_prompt
+from prompts.templates import get_scenario_prompt, DERIVATIONS_AND_FORMULAS_PROMPT
 from rag.retriever import RAGRetriever
 
 logger = logging.getLogger(__name__)
+
+def clean_markdown_formatting(text: str) -> str:
+    """
+    Remove markdown symbols while preserving structure and readability.
+    - Removes ## and ### from headings
+    - Removes ** from bold text
+    - Removes - from bullet points
+    - Keeps the text content clean and readable
+    """
+    if not text:
+        return text
+    
+    lines = text.split('\n')
+    cleaned_lines = []
+    
+    for line in lines:
+        # Remove heading markers (##, ###) but keep the text
+        if line.strip().startswith('###'):
+            cleaned_line = line.replace('###', '').strip()
+            cleaned_lines.append(cleaned_line)
+        elif line.strip().startswith('##'):
+            cleaned_line = line.replace('##', '').strip()
+            cleaned_lines.append(cleaned_line)
+        else:
+            # Remove bold markers (**)
+            cleaned_line = line.replace('**', '')
+            
+            # Remove bullet point markers (- ) but keep indentation
+            if cleaned_line.strip().startswith('- '):
+                cleaned_line = cleaned_line.replace('- ', '', 1)
+            
+            cleaned_lines.append(cleaned_line)
+    
+    return '\n'.join(cleaned_lines)
+
+
+async def get_formulas_and_derivations_markdown(
+    topic: str,
+    grade: int,
+    context: str,
+    rag_retriever: RAGRetriever
+) -> str:
+    """
+    Separate API call to get formulas and derivations in pure markdown format.
+    This avoids JSON parsing issues while keeping all mathematical symbols intact.
+    
+    Args:
+        topic: The topic for derivations
+        grade: Grade level
+        context: NCERT context from RAG
+        rag_retriever: RAG retriever instance for additional context if needed
+    
+    Returns:
+        Raw markdown text with formulas and derivations
+    """
+    try:
+        logger.info(f"Fetching formulas and derivations in markdown for: {topic}")
+        
+        # Additional RAG query specifically for formulas if context is limited
+        formula_context = context
+        if len(context) < 200:
+            formula_docs = await rag_retriever.retrieve(
+                query=f"{topic} formulas equations derivation proof",
+                top_k=3
+            )
+            if formula_docs:
+                formula_context = "\n\n".join([doc.get("text", "") for doc in formula_docs])
+        
+        # Create prompt for derivations and formulas
+        derivations_prompt = DERIVATIONS_AND_FORMULAS_PROMPT.format(
+            topic=topic,
+            grade=grade,
+            context=formula_context
+        )
+        
+        # Initialize Vertex AI if not already done
+        if not os.path.exists(settings.GOOGLE_APPLICATION_CREDENTIALS):
+            logger.error(f"Credentials file not found: {settings.GOOGLE_APPLICATION_CREDENTIALS}")
+            return "Derivations not available - credentials error."
+        
+        credentials = service_account.Credentials.from_service_account_file(
+            settings.GOOGLE_APPLICATION_CREDENTIALS
+        )
+        
+        vertexai.init(
+            project=settings.GCP_PROJECT_ID,
+            location=settings.GCP_LOCATION,
+            credentials=credentials
+        )
+        
+        # Initialize Gemini model
+        model = GenerativeModel(settings.GENERATION_MODEL)
+        
+        # Make API call
+        response = model.generate_content(
+            derivations_prompt,
+            generation_config={
+                "temperature": 0.7,
+                "max_output_tokens": 4096,
+            }
+        )
+        
+        if not response or not response.text:
+            logger.warning("Empty response from Gemini for derivations")
+            return "No derivations available."
+        
+        # Return raw markdown - NO cleaning, NO processing, ALL symbols intact
+        markdown_content = response.text.strip()
+        logger.info(f"Retrieved {len(markdown_content)} characters of derivations markdown")
+        
+        return markdown_content
+        
+    except Exception as e:
+        logger.error(f"Error fetching derivations markdown: {str(e)}")
+        return f"Error generating derivations: {str(e)}"
+
 
 class ScenarioGenerator:
     """Generate complete learning scenarios using Gemini + RAG."""
@@ -82,14 +198,17 @@ class ScenarioGenerator:
             # Query multiple aspects to get comprehensive context
             queries = [
                 f"{request.topic} definition explanation",
-                f"{request.topic} process steps",
+                f"{request.topic} process steps mechanism",
                 f"{request.topic} factors affecting",
-                f"{request.topic} importance applications"
+                f"{request.topic} importance applications",
+                f"{request.topic} formula equation mathematical expression"  # Formula extraction
             ]
             
             logger.info("Retrieving NCERT content for comprehensive context...")
             all_contexts = []
-            for q in queries:
+            formula_context = ""
+            
+            for i, q in enumerate(queries):
                 try:
                     # Don't filter by grade/subject - metadata format doesn't match
                     # (subject stored as 'ncert-textbook-for-class-10-science-chapter-10', not 'science')
@@ -100,6 +219,12 @@ class ScenarioGenerator:
                         top_k=3
                     )
                     all_contexts.append(ctx)
+                    
+                    # Separate formula context
+                    if i == len(queries) - 1:  # Last query is for formulas
+                        formula_context = ctx
+                        logger.info(f"📐 Retrieved formula context: {len(formula_context)} characters")
+                    
                 except Exception as e:
                     logger.warning(f"RAG query failed for '{q}': {e}")
             
@@ -110,6 +235,12 @@ class ScenarioGenerator:
             # If no context available, use basic context message
             if len(context) < 100:
                 context = f"Topic: {request.topic}\nGrade: {request.grade}\nSubject: {request.subject}\n\nNote: Limited NCERT content available. Generate a comprehensive learning experience based on curriculum standards for this topic."
+            
+            # Add formula context note to guide Gemini
+            if len(formula_context) > 50:
+                context += f"\n\n=== FORMULAS FOUND IN NCERT ===\n{formula_context}\n=== USE ALL THESE FORMULAS IN YOUR RESPONSE ==="
+            else:
+                context += f"\n\n=== NO FORMULAS FOUND IN NCERT ===\nGenerate all relevant formulas for {request.topic} from your knowledge."
             
             # 2. Determine simulation type
             simulation_type = self._determine_simulation_type(request.topic, request.subject)
@@ -156,17 +287,53 @@ class ScenarioGenerator:
                     response_text = response_text[:-3]
                 response_text = response_text.strip()
                 
+                # Aggressive JSON cleaning - fix all problematic characters
+                response_text = response_text.replace('"', '"').replace('"', '"')  # Smart quotes
+                response_text = response_text.replace("'", "'").replace("'", "'")  # Smart apostrophes
+                response_text = response_text.replace('…', '...')  # Ellipsis
+                response_text = response_text.replace('–', '-').replace('—', '-')  # Dashes
+                response_text = response_text.replace('′', "'").replace('″', '"')  # Prime symbols
+                response_text = response_text.replace('₂', '2').replace('₁', '1')  # Subscripts
+                response_text = response_text.replace('\u2013', '-').replace('\u2014', '-')
+                response_text = response_text.replace('\u2018', "'").replace('\u2019', "'")
+                response_text = response_text.replace('\u201c', '"').replace('\u201d', '"')
+                
                 # Parse JSON
-                scenario_data = json.loads(response_text)
-                logger.info("✅ Successfully parsed Gemini JSON response")
+                try:
+                    scenario_data = json.loads(response_text)
+                    logger.info("✅ Successfully parsed Gemini JSON response")
+                except json.JSONDecodeError as e:
+                    logger.error(f"JSON parse error at position {e.pos}: {e.msg}")
+                    logger.error(f"Problematic section: ...{response_text[max(0, e.pos-100):e.pos+100]}...")
+                    raise
                 
                 # Add scenario_id
                 scenario_id = f"scn_{request.student_id}_{request.topic.replace(' ', '_')}"
                 scenario_data["scenario_id"] = scenario_id
                 
+                # Clean markdown formatting from notes
+                if "notes" in scenario_data and scenario_data["notes"]:
+                    scenario_data["notes"] = clean_markdown_formatting(scenario_data["notes"])
+                    logger.info("✨ Cleaned markdown formatting from notes")
+                
+                # Make separate API call for formulas and derivations in markdown
+                logger.info("📐 Fetching formulas and derivations in markdown format...")
+                try:
+                    derivations_markdown = await get_formulas_and_derivations_markdown(
+                        topic=request.topic,
+                        grade=request.grade,
+                        context=context,
+                        rag_retriever=self.rag_retriever
+                    )
+                    scenario_data["formulasAndDerivationsMarkdown"] = derivations_markdown
+                    logger.info(f"✅ Added {len(derivations_markdown)} characters of derivations markdown")
+                except Exception as e:
+                    logger.error(f"Failed to fetch derivations markdown: {str(e)}")
+                    scenario_data["formulasAndDerivationsMarkdown"] = "Derivations not available."
+                
                 # Validate and create response
                 scenario_response = ScenarioResponse(**scenario_data)
-                logger.info(f"🎉 Generated REAL scenario: {scenario_id} with {len(scenario_response.tasks)} tasks, {len(scenario_response.quiz)} quiz questions")
+                logger.info(f"🎉 Generated REAL scenario: {scenario_id} with {len(scenario_response.quiz)} quiz questions")
                 return scenario_response
                 
             else:
@@ -415,6 +582,7 @@ class ScenarioGenerator:
             ],
             "notes": f"Key points about {request.topic}:\\n• Requires specific conditions to occur efficiently\\n• Multiple factors interact to influence outcomes\\n• Optimal results come from balanced conditions, not extremes\\n• Understanding cause-and-effect helps predict and control the process",
             "formulas": [],
+            "formulas_and_derivations_markdown": f"## Formulas for {request.topic}\n\n*Note: This is mock data. Real derivations will be generated by Gemini.*\n\n### Example Formula\n**Equation**: Sample formula for demonstration\n\n**Derivation**: Step-by-step derivation will appear here when Gemini generates it.",
             "estimated_duration": "15-20 minutes",
             "difficulty_level": request.difficulty or "medium",
             "ncert_chapter": f"Grade {request.grade} {request.subject.title()}",

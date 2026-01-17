@@ -5,6 +5,9 @@ from pydantic_settings import BaseSettings
 class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
     
+    # Base directory (project root)
+    BASE_DIR: str = str(Path(__file__).parent.parent)
+    
     # Server
     HOST: str = "0.0.0.0"
     PORT: int = 8001

@@ -171,7 +171,8 @@ class RAGRetriever:
         query: str,
         grade: Optional[int] = None,
         subject: Optional[str] = None,
-        top_k: Optional[int] = None
+        top_k: Optional[int] = None,
+        doc_type: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Retrieve relevant context for a query.
@@ -181,6 +182,7 @@ class RAGRetriever:
             grade: Filter by grade level
             subject: Filter by subject
             top_k: Number of results to return
+            doc_type: Filter by document type ("pyq", "ncert", or None for all)
             
         Returns:
             Dict with retrieved documents, metadata, and distances
@@ -196,6 +198,10 @@ class RAGRetriever:
                 filters["grade"] = grade
             if subject is not None:
                 filters["subject"] = subject.lower()
+            if doc_type is not None:
+                filters["type"] = doc_type
+            
+            logger.info(f"🔎 RAG Retriever - Query: '{query[:50]}', Filters: {filters}, Top K: {top_k or 5}")
             
             # Search vector store
             results = self.vector_store.search(
@@ -203,6 +209,10 @@ class RAGRetriever:
                 top_k=top_k or 5,
                 filters=filters if filters else None
             )
+            
+            logger.info(f"📦 Vector Store returned: {len(results.get('documents', []))} docs, {len(results.get('metadatas', []))} metadata")
+            if results.get('metadatas') and len(results['metadatas']) > 0:
+                logger.info(f"🔍 First metadata: {results['metadatas'][0]}")
             
             logger.info(f"Retrieved {len(results['documents'])} documents for query: '{query[:50]}...'")
             
