@@ -14,7 +14,7 @@ export const initSocket = (server) => {
         console.log(`User connected: ${socket.id}`);
 
         socket.on('ROOM_CREATED', (data) => {
-            const { roomId, topic, content, aiData, pyqData, hostId, hostName } = data;
+            const { roomId, topic, content, aiData, pyqData, hostId, hostName, enableOpticsPuzzle } = data;
             const roomData = {
                 roomId,
                 topic,
@@ -22,7 +22,8 @@ export const initSocket = (server) => {
                 aiData,
                 pyqData,
                 hostId,
-                participants: [{ id: hostId, name: hostName, socketId: socket.id, score: 0 }],
+                enableOpticsPuzzle: enableOpticsPuzzle !== undefined ? enableOpticsPuzzle : true,
+                participants: [{ id: hostId, name: hostName, socketId: socket.id, score: 0, puzzleScore: 0 }],
                 quizStarted: false,
                 submissions: []
             };
@@ -38,7 +39,7 @@ export const initSocket = (server) => {
 
             if (room) {
                 socket.join(roomId);
-                const newParticipant = { id: userId, name: userName, socketId: socket.id, score: 0 };
+                const newParticipant = { id: userId, name: userName, socketId: socket.id, score: 0, puzzleScore: 0 };
                 room.participants.push(newParticipant);
 
                 // Send existing content to the joining user
@@ -48,7 +49,8 @@ export const initSocket = (server) => {
                     aiData: room.aiData,
                     pyqData: room.pyqData,
                     participants: room.participants,
-                    quizStarted: room.quizStarted
+                    quizStarted: room.quizStarted,
+                    enableOpticsPuzzle: room.enableOpticsPuzzle
                 });
                 console.log(`Syncing room ${roomId} to ${userName} - AI Data: ${!!room.aiData}, PYQ Data: ${!!room.pyqData}`);
 
@@ -120,11 +122,31 @@ export const initSocket = (server) => {
 
                     // Broadcast updated leaderboard
                     const leaderboard = room.participants
-                        .map(p => ({ name: p.name, score: p.score }))
-                        .sort((a, b) => b.score - a.score);
+                        .map(p => ({ name: p.name, score: p.score, puzzleScore: p.puzzleScore || 0 }))
+                        .sort((a, b) => (b.score + b.puzzleScore) - (a.score + a.puzzleScore));
 
                     io.to(roomId).emit('LEADERBOARD_UPDATED', { leaderboard });
                     console.log(`Quiz submitted by ${participant.name} in room: ${roomId}. Score: ${score}/${totalQuestions}`);
+                }
+            }
+        });
+
+        socket.on('PUZZLE_SUBMITTED', (data) => {
+            const { roomId, userId, puzzleScore } = data;
+            const room = rooms.get(roomId);
+
+            if (room) {
+                const participant = room.participants.find(p => p.id === userId);
+                if (participant) {
+                    participant.puzzleScore = puzzleScore;
+
+                    // Broadcast updated leaderboard with puzzle scores
+                    const leaderboard = room.participants
+                        .map(p => ({ name: p.name, score: p.score, puzzleScore: p.puzzleScore || 0 }))
+                        .sort((a, b) => (b.score + b.puzzleScore) - (a.score + a.puzzleScore));
+
+                    io.to(roomId).emit('LEADERBOARD_UPDATED', { leaderboard });
+                    console.log(`Puzzle submitted by ${participant.name} in room: ${roomId}. Puzzle Score: ${puzzleScore}`);
                 }
             }
         });

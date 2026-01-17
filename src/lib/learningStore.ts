@@ -58,6 +58,9 @@ interface LearningState {
   // Reflection state
   reflectionAnswers: Record<string, string>;
 
+  // Puzzle state
+  puzzleScore: number;
+
   // Progress tracking
   studyNotes: StudyNote[];
   topicsCovered: string[];
@@ -77,6 +80,7 @@ interface LearningState {
   submitQuizAnswer: (questionId: string, answer: number, correct: boolean) => void;
   nextQuizQuestion: () => void;
   saveReflection: (question: string, answer: string) => void;
+  savePuzzleScore: (score: number) => void;
   saveToNotes: (notes: string) => void;
   syncStudyRoomContent: (content: LearningScenario, aiData: AIScenarioResponse | null, pyqData: PYQResponse | null) => void;
   resetSession: () => void;
@@ -101,6 +105,7 @@ export const useLearningStore = create<LearningState>((set, get) => ({
   quizResults: [],
   currentQuizIndex: 0,
   reflectionAnswers: {},
+  puzzleScore: 0,
   studyNotes: [],
   topicsCovered: [],
   totalPoints: 0,
@@ -417,6 +422,13 @@ export const useLearningStore = create<LearningState>((set, get) => ({
     }));
   },
 
+  savePuzzleScore: (score) => {
+    set({
+      puzzleScore: score,
+      totalPoints: get().totalPoints + score,
+    });
+  },
+
   saveToNotes: (notes) => {
     const { currentQuestion, currentScenario, studyNotes, topicsCovered } = get();
     if (!currentScenario) return;
@@ -574,6 +586,7 @@ export const useLearningStore = create<LearningState>((set, get) => ({
       quizResults: [],
       currentQuizIndex: 0,
       reflectionAnswers: {},
+      puzzleScore: 0,
     });
   },
 }));

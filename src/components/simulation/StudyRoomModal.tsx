@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Users, Plus, LogIn, Loader2 } from 'lucide-react';
+import { X, Users, Plus, LogIn, Loader2, Puzzle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
 import { useStudyRoomStore } from '@/lib/studyRoomStore';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -31,6 +33,7 @@ export function StudyRoomModal({
   const [roomCode, setRoomCode] = useState('');
   const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [enablePuzzle, setEnablePuzzle] = useState(true);
 
   const availableRooms = getAvailableRooms(simulationType);
 
@@ -245,6 +248,26 @@ export function StudyRoomModal({
                       </p>
                       <p className="text-xs text-muted-foreground mt-1">
                         <span className="font-semibold text-foreground">Simulation:</span> {simulationType}
+                      </p>
+                    </div>
+
+                    <div className="bg-primary/5 rounded-lg p-3 border border-primary/20">
+                      <div className="flex items-center space-x-3">
+                        <Checkbox
+                          id="modal-enable-puzzle"
+                          checked={enablePuzzle}
+                          onCheckedChange={(checked) => setEnablePuzzle(checked as boolean)}
+                          className="border-primary/50"
+                        />
+                        <Label htmlFor="modal-enable-puzzle" className="flex items-center gap-2 cursor-pointer text-sm font-medium">
+                          <Puzzle className="w-4 h-4 text-primary" />
+                          Include Optics Puzzle
+                        </Label>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-2 pl-7">
+                        {enablePuzzle 
+                          ? 'Members will solve a puzzle after quiz for bonus points'
+                          : 'Skip puzzle and go directly to reflection after quiz'}
                       </p>
                     </div>
 

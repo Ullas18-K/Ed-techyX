@@ -7,6 +7,7 @@ interface Participant {
     id: string;
     name: string;
     score: number;
+    puzzleScore: number;
 }
 
 interface RealtimeStudyRoomState {
@@ -20,23 +21,26 @@ interface RealtimeStudyRoomState {
     isHost: boolean;
     quizStarted: boolean;
     quizEnded: boolean;
-    currentPhase: 'simulation' | 'quiz' | 'reflection' | 'mastery' | null;
+    enableOpticsPuzzle: boolean;
+    currentPhase: 'simulation' | 'quiz' | 'puzzle' | 'reflection' | 'mastery' | null;
     isMinimized: boolean;
     showPanel: boolean;
-    leaderboard: { name: string; score: number }[];
+    leaderboard: { name: string; score: number; puzzleScore: number }[];
 
     // Actions
-    createRoom: (topic: string, content: LearningScenario, aiData: AIScenarioResponse | null, pyqData: PYQResponse | null, userName: string) => void;
+    createRoom: (topic: string, content: LearningScenario, aiData: AIScenarioResponse | null, pyqData: PYQResponse | null, userName: string, enableOpticsPuzzle?: boolean) => void;
     joinRoom: (roomId: string, userId: string, userName: string) => void;
     startQuiz: () => void;
     endQuiz: () => void;
     endRoom: () => void;
     submitScore: (score: number, total: number) => void;
+    submitPuzzleScore: (score: number) => void;
     updateMyScore: (score: number) => void;
+    updateMyPuzzleScore: (score: number) => void;
     setRoomData: (data: any) => void;
     addParticipant: (participant: any) => void;
     updateLeaderboard: (leaderboard: any) => void;
-    syncPhase: (phase: 'simulation' | 'quiz' | 'reflection' | 'mastery') => void;
+    syncPhase: (phase: 'simulation' | 'quiz' | 'puzzle' | 'reflection' | 'mastery') => void;
     toggleMinimize: () => void;
     hidePanel: () => void;
     resetRoom: () => void;
@@ -53,12 +57,13 @@ export const useRealtimeStudyRoomStore = create<RealtimeStudyRoomState>((set, ge
     isHost: false,
     quizStarted: false,
     quizEnded: false,
+    enableOpticsPuzzle: true,
     currentPhase: null,
     isMinimized: false,
     showPanel: true,
     leaderboard: [],
 
-    createRoom: (topic, content, aiData, pyqData, userName) => {
+    createRoom: (topic, content, aiData, pyqData, userName, enableOpticsPuzzle = true) => {
         const roomId = Math.random().toString(36).substring(2, 9).toUpperCase();
         const userId = Math.random().toString(36).substring(2, 9);
 
@@ -70,7 +75,8 @@ export const useRealtimeStudyRoomStore = create<RealtimeStudyRoomState>((set, ge
             aiData,
             pyqData,
             hostId: userId,
-            hostName: userName
+            hostName: userName,
+            enableOpticsPuzzle
         });
 
         set({
@@ -80,9 +86,10 @@ export const useRealtimeStudyRoomStore = create<RealtimeStudyRoomState>((set, ge
             content,
             aiData,
             pyqData,
-            participants: [{ id: userId, name: userName, score: 0 }],
+            participants: [{ id: userId, name: userName, score: 0, puzzleScore: 0 }],
             isHost: true,
             quizStarted: false,
+            enableOpticsPuzzle,
             currentPhase: 'simulation'
         });
     },
@@ -156,6 +163,28 @@ export const useRealtimeStudyRoomStore = create<RealtimeStudyRoomState>((set, ge
         }
     },
 
+    submitPuzzleScore: (puzzleScore) => {
+        const { roomId, userId } = get();
+        if (roomId && userId) {
+            socketService.emit('PUZZLE_SUBMITTED', {
+                roomId,
+                userId,
+                puzzleScore
+            });
+        }
+    },
+
+    updateMyPuzzleScore: (puzzleScore) => {
+        const { userId } = get();
+        if (userId) {
+            set((state) => ({
+                participants: state.participants.map(p =>
+                    p.id === userId ? { ...p, puzzleScore } : p
+                )
+            }));
+        }
+    },
+
     setRoomData: (data) => {
         set({
             topic: data.topic,
@@ -163,7 +192,8 @@ export const useRealtimeStudyRoomStore = create<RealtimeStudyRoomState>((set, ge
             aiData: data.aiData,
             pyqData: data.pyqData,
             participants: data.participants,
-            quizStarted: data.quizStarted
+            quizStarted: data.quizStarted,
+            enableOpticsPuzzle: data.enableOpticsPuzzle !== undefined ? data.enableOpticsPuzzle : true
         });
     },
 
@@ -205,6 +235,7 @@ export const useRealtimeStudyRoomStore = create<RealtimeStudyRoomState>((set, ge
             isHost: false,
             quizStarted: false,
             quizEnded: false,
+            enableOpticsPuzzle: true,
             currentPhase: null,
             isMinimized: false,
             showPanel: true,

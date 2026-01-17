@@ -244,19 +244,22 @@ export const StudyRoomManager = () => {
                                         {quizEnded ? 'Final Leaderboard' : 'Live Leaderboard'}
                                     </span>
                                     <div className="space-y-1.5">
-                                        {leaderboard.slice(0, 5).map((entry, i) => (
-                                            <div key={i} className={`flex items-center justify-between text-xs p-2 rounded-lg ${i === 0 ? 'bg-yellow-500/10 border border-yellow-500/20' :
-                                                i === 1 ? 'bg-gray-400/10 border border-gray-400/20' :
-                                                    i === 2 ? 'bg-orange-600/10 border border-orange-600/20' :
-                                                        'bg-primary/5'
-                                                }`}>
-                                                <div className="flex items-center gap-2">
-                                                    <span className="font-bold text-muted-foreground">#{i + 1}</span>
-                                                    <span className="font-medium text-foreground">{entry.name}</span>
+                                        {leaderboard.slice(0, 5).map((entry, i) => {
+                                            const totalScore = (entry.score || 0) + (entry.puzzleScore || 0);
+                                            return (
+                                                <div key={i} className={`flex items-center justify-between text-xs p-2 rounded-lg ${i === 0 ? 'bg-yellow-500/10 border border-yellow-500/20' :
+                                                    i === 1 ? 'bg-gray-400/10 border border-gray-400/20' :
+                                                        i === 2 ? 'bg-orange-600/10 border border-orange-600/20' :
+                                                            'bg-primary/5'
+                                                    }`}>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="font-bold text-muted-foreground">#{i + 1}</span>
+                                                        <span className="font-medium text-foreground">{entry.name}</span>
+                                                    </div>
+                                                    <span className="font-bold text-primary">{totalScore} pts</span>
                                                 </div>
-                                                <span className="font-bold text-primary">{entry.score} pts</span>
-                                            </div>
-                                        ))}
+                                            );
+                                        })}
                                     </div>
                                     {/* Leaderboard Actions - Only for host after quiz ends */}
                                     {isHost && quizEnded && (

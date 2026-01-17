@@ -2,7 +2,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
 export const exportLeaderboardToPDF = (
-    leaderboard: { name: string; score: number }[],
+    leaderboard: { name: string; score: number; puzzleScore?: number }[],
     topic: string,
     roomId: string
 ) => {
@@ -22,16 +22,22 @@ export const exportLeaderboardToPDF = (
     doc.text(`Time: ${new Date().toLocaleTimeString()}`, 20, 56);
 
     // Add leaderboard table
-    const tableData = leaderboard.map((entry, index) => [
-        index + 1,
-        entry.name,
-        entry.score,
-        index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : ''
-    ]);
+    const tableData = leaderboard.map((entry, index) => {
+        const puzzleScore = entry.puzzleScore || 0;
+        const totalScore = entry.score + puzzleScore;
+        return [
+            index + 1,
+            entry.name,
+            entry.score,
+            puzzleScore,
+            totalScore,
+            index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : ''
+        ];
+    });
 
     autoTable(doc, {
         startY: 65,
-        head: [['Rank', 'Name', 'Score', 'Medal']],
+        head: [['Rank', 'Name', 'Quiz', 'Puzzle', 'Total', 'Medal']],
         body: tableData,
         theme: 'striped',
         headStyles: {
@@ -45,9 +51,11 @@ export const exportLeaderboardToPDF = (
         },
         columnStyles: {
             0: { halign: 'center', cellWidth: 20 },
-            1: { cellWidth: 80 },
-            2: { halign: 'center', cellWidth: 30 },
-            3: { halign: 'center', cellWidth: 30 }
+            1: { cellWidth: 60 },
+            2: { halign: 'center', cellWidth: 25 },
+            3: { halign: 'center', cellWidth: 25 },
+            4: { halign: 'center', cellWidth: 25 },
+            5: { halign: 'center', cellWidth: 25 }
         }
     });
 

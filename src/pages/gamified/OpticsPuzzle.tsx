@@ -20,6 +20,8 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
+import { useLearningStore } from '@/lib/learningStore';
+import { useRealtimeStudyRoomStore } from '@/lib/realtimeStudyRoomStore';
 
 // --- TYPES & GAME STATE ---
 
@@ -182,6 +184,8 @@ const PuzzlePenman = ({
 
 export default function OpticsPuzzle() {
     const navigate = useNavigate();
+    const { savePuzzleScore } = useLearningStore();
+    const { roomId, submitPuzzleScore, updateMyPuzzleScore } = useRealtimeStudyRoomStore();
 
     // Game Logic State
     const [gameStarted, setGameStarted] = useState(false);
@@ -507,6 +511,7 @@ export default function OpticsPuzzle() {
     const nextLevel = () => {
         if (level === 3) {
             setGameComplete(true);
+            handlePuzzleComplete(score);
             return;
         }
 
@@ -517,6 +522,41 @@ export default function OpticsPuzzle() {
         setPenmanEmotion('neutral');
         setPenmanVisible(true);
         setProblemPanelOpen(true);
+    };
+
+    const handlePuzzleComplete = (finalScore: number) => {
+        // Save puzzle score locally
+        savePuzzleScore(finalScore);
+        
+        // If in multiplayer, sync score
+        if (roomId) {
+            submitPuzzleScore(finalScore);
+            updateMyPuzzleScore(finalScore);
+        }
+        
+        toast.success(`Puzzle completed! You earned ${finalScore} points!`);
+    };
+
+    const handleSkipPuzzle = () => {
+        // Award 0 points for skipping
+        savePuzzleScore(0);
+        
+        // If in multiplayer, sync 0 score
+        if (roomId) {
+            submitPuzzleScore(0);
+            updateMyPuzzleScore(0);
+        }
+        
+        toast.info('Puzzle skipped. Moving to reflection...');
+        navigate('/reflection');
+    };
+
+    const handleContinueToReflection = () => {
+        // If game is complete but not navigated yet, handle score
+        if (gameComplete && !roomId) {
+            // For solo, score is already saved via handlePuzzleComplete
+        }
+        navigate('/reflection');
     };
 
     const useHint = () => {
@@ -682,9 +722,14 @@ export default function OpticsPuzzle() {
                                     <p className="text-xl text-slate-300 mb-8 font-light">
                                         You’ve successfully completed the Ray Optics Challenge with a score of <span className="text-green-400 font-bold">{score}</span>.
                                     </p>
-                                    <Button onClick={() => navigate('/')} className="h-14 px-8 text-xl bg-white text-black hover:bg-slate-200 rounded-full font-bold shadow-[0_0_30px_rgba(255,255,255,0.3)]">
-                                        <Home className="mr-2 w-5 h-5" /> Back to Home
-                                    </Button>
+                                    <div className="flex gap-4 justify-center">
+                                        <Button onClick={() => navigate('/')} variant="outline" className="h-14 px-8 text-xl rounded-full font-bold">
+                                            <Home className="mr-2 w-5 h-5" /> Home
+                                        </Button>
+                                        <Button onClick={handleContinueToReflection} className="h-14 px-8 text-xl bg-white text-black hover:bg-slate-200 rounded-full font-bold shadow-[0_0_30px_rgba(255,255,255,0.3)]">
+                                            Continue to Reflection <ArrowRight className="ml-2 w-5 h-5" />
+                                        </Button>
+                                    </div>
                                 </motion.div>
                             </div>
                         )}
@@ -792,18 +837,29 @@ export default function OpticsPuzzle() {
                         )}
                     </div>
 
-                    <div className="pt-6 border-t border-slate-800">
+                    <div className="pt-6 border-t border-slate-800 space-y-4">
                         <Button
-                            className="w-full h-12 text-lg font-bold bg-green-600 hover:bg-green-500 shadow-lg shadow-green-900/20"
-                            onClick={handleLevelCheck}
-                            disabled={levelComplete}
+                            variant="outline"
+                            className="w-full h-10 text-sm font-medium text-slate-400 hover:text-white border-slate-700 hover:border-slate-600"
+                            onClick={handleSkipPuzzle}
                         >
-                            <Play className="w-5 h-5 mr-2 fill-current" />
-                            TEST CONFIGURATION
+                            Skip & Continue
+                            <ArrowRight className="w-4 h-4 ml-2" />
                         </Button>
-                        <p className="text-center text-[10px] text-slate-500 mt-2">
-                            Penalty applies for incorrect attempts.
-                        </p>
+
+                        <div>
+                            <Button
+                                className="w-full h-12 text-lg font-bold bg-green-600 hover:bg-green-500 shadow-lg shadow-green-900/20"
+                                onClick={handleLevelCheck}
+                                disabled={levelComplete}
+                            >
+                                <Play className="w-5 h-5 mr-2 fill-current" />
+                                TEST CONFIGURATION
+                            </Button>
+                            <p className="text-center text-[10px] text-slate-500 mt-2">
+                                Penalty applies for incorrect attempts.
+                            </p>
+                        </div>
                     </div>
                 </div>
             </div>

@@ -226,10 +226,10 @@ export function LearningPlanScreen({ onStart }: LearningPlanScreenProps) {
             </motion.div>
           </div>
 
-          {/* Row 4: Start Simulation Button */}
+          {/* Row 4: Action Buttons */}
           <motion.div
             variants={itemVariants}
-            className="flex-shrink-0 mt-auto w-96 mx-auto"
+            className="flex-shrink-0 mt-auto flex flex-col sm:flex-row gap-3 w-full max-w-96 mx-auto"
           >
             <Button
               variant="hero"
@@ -239,6 +239,15 @@ export function LearningPlanScreen({ onStart }: LearningPlanScreenProps) {
             >
               <Play className="w-3.5 h-3.5" />
               <span><Translate>Start Simulation</Translate></span>
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate('/simulation')}
+              className="gap-2 rounded-lg w-full text-xs h-9 border-primary/20 hover:bg-primary/5 hover:text-foreground"
+            >
+              <Play className="w-3.5 h-3.5" />
+              <span><Translate>Start Without Simulation</Translate></span>
             </Button>
           </motion.div>
         </div>
