@@ -20,11 +20,16 @@ class ScenarioRequest(BaseModel):
     difficulty: Optional[str] = Field("medium", description="easy, medium, hard")
 
 class ConversationRequest(BaseModel):
+    """
+    Request for conversational AI guidance.
+    
+    Note: This is STATELESS - no session_history stored.
+    All context must be provided in each request.
+    """
     scenario_id: str
     current_task_id: int
     student_input: str
-    context: Optional[Dict[str, Any]] = None
-    session_history: Optional[List[str]] = []
+    context: Optional[Dict[str, Any]] = None  # Contains topic, grade, subject, simulation_state
 
 class QuizRequest(BaseModel):
     topic: str
@@ -121,11 +126,32 @@ class ScenarioResponse(BaseModel):
     ncert_chapter: Optional[str] = Field("", alias="ncertChapter")
     ncert_page_refs: Optional[List[str]] = Field([], alias="ncertPageRefs")
 
+class RAGSource(BaseModel):
+    """NCERT source reference for RAG-based responses."""
+    chapter: Optional[str] = ""
+    page: Optional[str] = ""
+    excerpt: str = ""
+
 class ConversationResponse(BaseModel):
+    """
+    Enhanced conversational response with RAG integration.
+    
+    Features:
+    - Real-time AI-generated response
+    - RAG source citations
+    - Follow-up suggestions
+    - Confidence scoring
+    """
     response: str
-    action: str  # "continue", "next_task", "hint", "repeat"
+    action: str = "answer"  # "answer", "hint", "redirect", "error", "encourage"
     task_complete: bool = False
     next_task_id: Optional[int] = None
+    
+    # Enhanced fields
+    rag_used: bool = False
+    rag_sources: Optional[List[RAGSource]] = None
+    confidence: float = 0.5
+    follow_up_suggestions: Optional[List[str]] = None
 
 class QuizResponse(BaseModel):
     quiz_id: str

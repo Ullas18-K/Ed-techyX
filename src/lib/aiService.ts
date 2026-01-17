@@ -72,11 +72,21 @@ export interface AIScenarioResponse {
   ncertPageRefs: string[];
 }
 
+export interface RAGSource {
+  chapter: string;
+  page: number;
+  excerpt: string;
+}
+
 export interface AIConversationResponse {
   response: string;
   action: 'continue' | 'hint' | 'encourage' | 'complete_task' | 'next_task';
   task_complete: boolean;
   next_task_id?: number;
+  rag_used?: boolean;
+  rag_sources?: RAGSource[];
+  confidence?: number;
+  follow_up_suggestions?: string[];
 }
 
 // Generate AI-powered learning scenario
@@ -151,8 +161,7 @@ export async function getAIGuidance(
         scenario_id: scenarioId,
         current_task_id: currentTaskId,
         student_input: studentInput,
-        context: context,
-        session_history: []
+        context: context
       }),
     });
 
@@ -175,7 +184,9 @@ export async function getAIGuidance(
     return {
       response: "Keep exploring! I'm here to help when you're ready.",
       action: 'continue',
-      task_complete: false
+      task_complete: false,
+      rag_used: false,
+      confidence: 0.5
     };
   }
 }

@@ -38,6 +38,7 @@ interface LearningState {
   currentScenario: LearningScenario | null;
   currentPhase: 'home' | 'thinking' | 'plan' | 'simulation' | 'explanation' | 'quiz' | 'reflection' | 'mastery';
   isAIGenerated: boolean;
+  isAIScenarioReady: boolean; // Flag to track when AI scenario is fully generated
   aiScenarioData: AIScenarioResponse | null;
   
   // Simulation state
@@ -85,6 +86,7 @@ export const useLearningStore = create<LearningState>((set, get) => ({
   currentScenario: null,
   currentPhase: 'home',
   isAIGenerated: false,
+  isAIScenarioReady: false,
   aiScenarioData: null,
   simulationValues: {},
   simulationResults: {},
@@ -113,6 +115,7 @@ export const useLearningStore = create<LearningState>((set, get) => ({
       currentQuestion: question,
       currentScenario: scenario,
       isAIGenerated: false,
+      isAIScenarioReady: false,
       aiScenarioData: null,
       simulationValues: defaultValues,
       simulationResults: {},
@@ -239,6 +242,7 @@ export const useLearningStore = create<LearningState>((set, get) => ({
         currentQuestion: topic,
         currentScenario: scenario,
         isAIGenerated: true,
+        isAIScenarioReady: true,
         aiScenarioData: aiData,
         simulationValues: defaultValues,
         simulationResults: {},
@@ -534,6 +538,7 @@ export const useLearningStore = create<LearningState>((set, get) => ({
       currentQuestion: '',
       currentScenario: null,
       currentPhase: 'home',
+      isAIScenarioReady: false,
       simulationValues: {},
       simulationResults: {},
       completedTasks: [],

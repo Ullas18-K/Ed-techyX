@@ -12,14 +12,39 @@ interface AIThinkingScreenProps {
 export function AIThinkingScreen({ onComplete }: AIThinkingScreenProps) {
   const [currentStep, setCurrentStep] = useState(0);
   const [completedSteps, setCompletedSteps] = useState<number[]>([]);
-  const { currentScenario, currentQuestion } = useLearningStore();
+  const [loopCount, setLoopCount] = useState(0);
+  const { currentScenario, currentQuestion, isAIScenarioReady } = useLearningStore();
+
+  // Monitor scenario generation - only advance when AI scenario is truly ready
+  useEffect(() => {
+    if (isAIScenarioReady && currentScenario) {
+      console.log('✅ AI Scenario fully generated and ready:', currentScenario.id);
+      console.log('🎯 Advancing to plan phase...');
+      // Give a brief moment to show completion, then advance
+      const timer = setTimeout(() => {
+        onComplete();
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [isAIScenarioReady, currentScenario, onComplete]);
 
   useEffect(() => {
     let timeoutId: NodeJS.Timeout;
 
     const processStep = (stepIndex: number) => {
+      // If AI scenario is ready, stop looping
+      if (isAIScenarioReady && currentScenario) {
+        console.log('🛑 AI Scenario ready, stopping step loop');
+        return;
+      }
+
+      // If we've completed all steps, loop back to beginning
       if (stepIndex >= aiThinkingSteps.length) {
-        timeoutId = setTimeout(onComplete, 800);
+        console.log(`🔄 Completed loop ${loopCount + 1}, AI scenario not ready yet. Looping...`);
+        setLoopCount(prev => prev + 1);
+        setCompletedSteps([]);
+        // Restart from step 0 after brief pause
+        timeoutId = setTimeout(() => processStep(0), 300);
         return;
       }
 
@@ -34,7 +59,7 @@ export function AIThinkingScreen({ onComplete }: AIThinkingScreenProps) {
     processStep(0);
 
     return () => clearTimeout(timeoutId);
-  }, [onComplete]);
+  }, [loopCount, isAIScenarioReady, currentScenario]);
 
   const getStepIcon = (stepId: number) => {
     const icons = [Brain, BookOpen, Target, Sparkles, Cog, FlaskConical, HelpCircle, CheckCircle2];
@@ -288,19 +313,47 @@ export function AIThinkingScreen({ onComplete }: AIThinkingScreenProps) {
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-semibold text-foreground">Overall Progress</span>
               <span className="text-xs font-bold text-primary">
-                {Math.round(((completedSteps.length + 1) / aiThinkingSteps.length) * 100)}%
+                {isAIScenarioReady
+                  ? '100%'
+                  : completedSteps.length === aiThinkingSteps.length
+                  ? '95%'
+                  : Math.round(((completedSteps.length + 1) / aiThinkingSteps.length) * 100) + '%'}
               </span>
             </div>
             <div className="h-2 bg-muted/30 rounded-full overflow-hidden shadow-inner">
               <motion.div
                 className="h-full bg-gradient-to-r from-primary via-primary/90 to-primary rounded-full shadow-md shadow-primary/40"
                 initial={{ width: "0%" }}
-                animate={{ width: `${((completedSteps.length + 1) / aiThinkingSteps.length) * 100}%` }}
+                animate={{ 
+                  width: isAIScenarioReady
+                    ? '100%'
+                    : completedSteps.length === aiThinkingSteps.length
+                    ? '95%'
+                    : `${((completedSteps.length + 1) / aiThinkingSteps.length) * 100}%`
+                }}
                 transition={{ duration: 0.6, ease: "easeOut" }}
               />
             </div>
             <p className="text-xs text-center text-muted-foreground mt-2">
-              {completedSteps.length} of {aiThinkingSteps.length} steps completed
+              {isAIScenarioReady ? (
+                <motion.span
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="text-success font-semibold"
+                >
+                  ✅ Scenario generated successfully!
+                </motion.span>
+              ) : completedSteps.length === aiThinkingSteps.length ? (
+                <motion.span
+                  animate={{ opacity: [0.5, 1, 0.5] }}
+                  transition={{ duration: 1.5, repeat: Infinity }}
+                  className="text-primary font-semibold"
+                >
+                  🎨 Generating your personalized scenario...{loopCount > 0 && ` (${loopCount + 1})`}
+                </motion.span>
+              ) : (
+                <>{completedSteps.length} of {aiThinkingSteps.length} steps completed</>
+              )}
             </p>
           </motion.div>
         </div>

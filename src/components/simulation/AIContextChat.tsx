@@ -1,19 +1,32 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, Sparkles, Bot, User, Loader2 } from 'lucide-react';
+import { Send, Sparkles, Bot, User, Loader2, BookOpen, Lightbulb, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { getAIGuidance } from '@/lib/aiService';
 import { useAuthStore } from '@/lib/authStore';
 import { useLearningStore } from '@/lib/learningStore';
+
+interface RAGSource {
+  chapter?: string;
+  page?: string;
+  excerpt: string;
+}
 
 interface Message {
   id: string;
   role: 'user' | 'ai';
   content: string;
   timestamp: Date;
+  // Enhanced AI message fields
+  rag_used?: boolean;
+  rag_sources?: RAGSource[];
+  confidence?: number;
+  follow_up_suggestions?: string[];
+  action?: string;
 }
 
 interface AIContextChatProps {
@@ -28,15 +41,17 @@ export function AIContextChat({ scenarioId, currentTaskId, context, onTaskComple
     {
       id: '1',
       role: 'ai',
-      content: context.greeting || "Hi! I'm your AI learning assistant. Ask me anything about what you're learning, or tell me what you're doing in the simulation!",
-      timestamp: new Date()
+      content: context.greeting || "Hi! I'm your AI learning assistant powered by Google Gemini and NCERT content. 🌟 Ask me anything about what you're learning, or tell me what you're observing in the simulation!",
+      timestamp: new Date(),
+      rag_used: false,
+      confidence: 1.0
     }
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const { token } = useAuthStore();
-  const { completeTask } = useLearningStore();
+  const { completeTask, simulationValues, simulationResults } = useLearningStore();
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -59,12 +74,22 @@ export function AIContextChat({ scenarioId, currentTaskId, context, onTaskComple
     setIsLoading(true);
 
     try {
-      // Call AI guidance API
+      // Build comprehensive context with simulation state
+      const enhancedContext = {
+        ...context,
+        simulation_state: {
+          ...simulationValues,
+          ...simulationResults,
+          current_task: currentTaskId
+        }
+      };
+
+      // Call AI guidance API with enhanced context
       const response = await getAIGuidance(
         scenarioId,
         currentTaskId,
         userMessage.content,
-        context,
+        enhancedContext,
         token || ''
       );
 
@@ -72,7 +97,12 @@ export function AIContextChat({ scenarioId, currentTaskId, context, onTaskComple
         id: (Date.now() + 1).toString(),
         role: 'ai',
         content: response.response,
-        timestamp: new Date()
+        timestamp: new Date(),
+        rag_used: response.rag_used || false,
+        rag_sources: response.rag_sources || [],
+        confidence: response.confidence || 0.5,
+        follow_up_suggestions: response.follow_up_suggestions || [],
+        action: response.action || 'answer'
       };
 
       setMessages(prev => [...prev, aiMessage]);
@@ -90,13 +120,26 @@ export function AIContextChat({ scenarioId, currentTaskId, context, onTaskComple
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'ai',
-        content: "I'm here to help! Keep exploring and let me know what you discover.",
-        timestamp: new Date()
+        content: "I'm having trouble connecting right now. Could you try asking that again? 🔄",
+        timestamp: new Date(),
+        rag_used: false,
+        confidence: 0.0,
+        action: 'error'
       };
       setMessages(prev => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleQuickQuestion = (question: string) => {
+    setInput(question);
+    // Auto-send after a brief delay
+    setTimeout(() => {
+      if (question) {
+        handleSend();
+      }
+    }, 100);
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -107,17 +150,31 @@ export function AIContextChat({ scenarioId, currentTaskId, context, onTaskComple
   };
 
   return (
-    <div className="flex flex-col h-full glass-panel rounded-2xl overflow-hidden">
+    <div className="flex flex-col h-full glass-card rounded-2xl overflow-hidden">
       {/* Header */}
-      <div className="flex items-center gap-3 p-4 border-b border-white/10 bg-white/5">
-        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center">
+      <div className="flex items-center gap-3 p-4 border-b border-primary/10">
+        <div className="relative w-10 h-10 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center">
           <Bot className="w-5 h-5 text-white" />
+          {isLoading && (
+            <motion.div 
+              className="absolute inset-0"
+              animate={{ scale: [1, 1.3, 1], opacity: [0.7, 0, 0.7] }}
+              transition={{ duration: 1.5, repeat: Infinity }}
+            >
+              <div className="w-full h-full rounded-full bg-primary/30" />
+            </motion.div>
+          )}
         </div>
-        <div>
-          <h3 className="font-semibold text-white">AI Learning Assistant</h3>
-          <p className="text-xs text-white/60">Powered by Gemini</p>
+        <div className="flex-1">
+          <h3 className="font-semibold text-foreground">AI Learning Assistant</h3>
+          <p className="text-sm text-muted-foreground">
+            {isLoading ? 'Thinking...' : 'Ready to help'}
+          </p>
         </div>
-        <Sparkles className="w-4 h-4 text-primary ml-auto animate-pulse" />
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full glass-card">
+          <Sparkles className="w-4 h-4 text-primary" />
+          <span className="text-xs font-medium text-foreground">AI-Powered</span>
+        </div>
       </div>
 
       {/* Messages */}
@@ -137,28 +194,57 @@ export function AIContextChat({ scenarioId, currentTaskId, context, onTaskComple
                 <div className={cn(
                   "w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0",
                   message.role === 'ai' 
-                    ? 'bg-gradient-to-br from-primary/20 to-accent/20 border border-primary/30'
-                    : 'bg-gradient-to-br from-blue-500/20 to-purple-500/20 border border-blue-500/30'
+                    ? 'bg-gradient-to-br from-primary to-accent'
+                    : 'bg-primary/20 border border-primary/30'
                 )}>
                   {message.role === 'ai' ? (
-                    <Bot className="w-4 h-4 text-primary" />
+                    <Bot className="w-4 h-4 text-white" />
                   ) : (
-                    <User className="w-4 h-4 text-blue-400" />
+                    <User className="w-4 h-4 text-primary" />
                   )}
                 </div>
 
                 <div className={cn(
-                  "flex-1 max-w-[80%] p-3 rounded-2xl",
-                  message.role === 'ai'
-                    ? 'bg-white/5 border border-white/10'
-                    : 'bg-gradient-to-br from-blue-500/20 to-purple-500/20 border border-blue-500/30'
+                  "flex-1 max-w-[80%] rounded-2xl glass-card",
+                  message.role === 'user' && 'bg-primary/5'
                 )}>
-                  <p className="text-sm text-white/90 leading-relaxed">
-                    {message.content}
-                  </p>
-                  <p className="text-xs text-white/40 mt-1">
-                    {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  </p>
+                  <div className="p-3">
+                    <p className="text-sm text-foreground leading-relaxed">
+                      {message.content}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1.5">
+                      {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </p>
+                  </div>
+
+                  {/* Enhanced AI message features */}
+                  {message.role === 'ai' && (
+                    <>
+
+                      {/* Follow-up Suggestions */}
+                      {message.follow_up_suggestions && message.follow_up_suggestions.length > 0 && (
+                        <div className="px-3 pb-3 space-y-2">
+                          <p className="text-xs text-muted-foreground flex items-center gap-1.5 mb-2">
+                            <Lightbulb className="w-3.5 h-3.5" />
+                            Continue exploring:
+                          </p>
+                          {message.follow_up_suggestions.map((suggestion, idx) => (
+                            <button
+                              key={idx}
+                              onClick={() => handleQuickQuestion(suggestion)}
+                              disabled={isLoading}
+                              className="w-full text-left text-xs p-2.5 rounded-lg glass-card
+                                       hover:bg-primary/5 transition-all duration-200
+                                       disabled:opacity-50 disabled:cursor-not-allowed
+                                       text-foreground font-medium"
+                            >
+                              {suggestion}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  )}
                 </div>
               </motion.div>
             ))}
@@ -170,13 +256,13 @@ export function AIContextChat({ scenarioId, currentTaskId, context, onTaskComple
               animate={{ opacity: 1 }}
               className="flex gap-3"
             >
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary/20 to-accent/20 border border-primary/30 flex items-center justify-center">
-                <Bot className="w-4 h-4 text-primary" />
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center">
+                <Bot className="w-4 h-4 text-white" />
               </div>
-              <div className="flex-1 max-w-[80%] p-3 rounded-2xl bg-white/5 border border-white/10">
+              <div className="flex-1 max-w-[80%] p-3 rounded-2xl glass-card">
                 <div className="flex items-center gap-2">
                   <Loader2 className="w-4 h-4 text-primary animate-spin" />
-                  <span className="text-sm text-white/60">Thinking...</span>
+                  <span className="text-sm text-muted-foreground">Thinking...</span>
                 </div>
               </div>
             </motion.div>
@@ -185,20 +271,20 @@ export function AIContextChat({ scenarioId, currentTaskId, context, onTaskComple
       </ScrollArea>
 
       {/* Input */}
-      <div className="p-4 border-t border-white/10 bg-white/5">
+      <div className="p-4 border-t border-primary/10">
         <div className="flex gap-2">
           <Input
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyPress={handleKeyPress}
-            placeholder="Ask a question or describe what you're doing..."
-            className="flex-1 bg-white/5 border-white/10 text-white placeholder:text-white/40"
+            placeholder="Ask about the topic or simulation..."
+            className="flex-1 glass-input text-foreground placeholder:text-muted-foreground"
             disabled={isLoading}
           />
           <Button
             onClick={handleSend}
             disabled={!input.trim() || isLoading}
-            className="bg-gradient-to-r from-primary to-accent hover:opacity-90"
+            className="bg-gradient-to-r from-primary to-accent hover:opacity-90 transition-opacity"
           >
             {isLoading ? (
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -207,9 +293,12 @@ export function AIContextChat({ scenarioId, currentTaskId, context, onTaskComple
             )}
           </Button>
         </div>
-        <p className="text-xs text-white/40 mt-2 text-center">
-          AI responses are powered by Google Gemini
-        </p>
+        <div className="flex items-center justify-center gap-2 mt-3">
+          <Sparkles className="w-3.5 h-3.5 text-primary" />
+          <p className="text-xs text-muted-foreground">
+            AI-Powered Learning Assistant
+          </p>
+        </div>
       </div>
     </div>
   );

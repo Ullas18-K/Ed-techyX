@@ -48,7 +48,7 @@ router.post('/scenario/generate', authenticateToken, scenarioValidation, async (
       student_id: req.user._id.toString(),
       difficulty: difficulty || 'medium'
     }, {
-      timeout: 120000 // 120 second timeout (2 minutes)
+      timeout: 500000 // 300 second timeout (5 minutes)
     });
 
     console.log(`✅ AI Service: Scenario generated successfully - ${response.data.scenarioId || 'unknown'}`);

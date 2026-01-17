@@ -62,35 +62,33 @@ const Index = () => {
   }, [isAuthenticated, currentPhase, resetSession]);
 
   const handleQuestionSubmit = useCallback(async (question: string) => {
-    let loadingToastId: string | number | undefined;
     try {
-      // Try AI-powered scenario generation first
-      loadingToastId = toast.loading('🤖 Generating AI-powered scenario...', {
-        description: 'This may take 30-60 seconds. Please wait...',
-        duration: Infinity
-      });
-      
-      await setAIScenario(question, token || '');
-      addSimulationHistory(question);
-      startLearning();
-      
-      toast.dismiss(loadingToastId);
-      toast.success('🎉 AI scenario generated!', {
-        description: 'Your personalized learning experience is ready'
-      });
-    } catch (error) {
-      // Fallback to legacy mode
-      console.log('AI generation failed, using legacy mode:', error);
-      if (loadingToastId) toast.dismiss(loadingToastId);
-      
+      // Immediately transition to thinking phase for loading experience
       setQuestion(question);
       addSimulationHistory(question);
-      startLearning();
-      toast.info('Using standard learning mode', {
-        description: 'AI service unavailable - using pre-built content'
-      });
+      setPhase('thinking');
+      
+      // Try AI-powered scenario generation in background
+      try {
+        await setAIScenario(question, token || '');
+        console.log('✅ AI scenario generated successfully');
+        // Don't auto-advance here - let AIThinkingScreen handle it
+      } catch (error) {
+        // Fallback to legacy mode silently
+        console.log('⚠️ AI generation failed, using legacy mode:', error);
+        toast.info('Using standard learning mode', {
+          description: 'AI service unavailable - using pre-built content',
+          duration: 3000
+        });
+        // Still don't auto-advance - let AIThinkingScreen handle it
+      }
+      
+    } catch (error) {
+      console.error('❌ Question submission failed:', error);
+      toast.error('Failed to start learning session');
+      setPhase('home');
     }
-  }, [setQuestion, setAIScenario, startLearning, addSimulationHistory, token]);
+  }, [setQuestion, setAIScenario, setPhase, addSimulationHistory, token]);
 
   const handleThinkingComplete = useCallback(() => { 
     setPhase('plan'); 

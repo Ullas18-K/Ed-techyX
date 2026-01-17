@@ -71,7 +71,7 @@ async def startup_event():
         
         # Initialize agents
         scenario_generator = ScenarioGenerator(rag_retriever)
-        conversation_guide = ConversationGuide()
+        conversation_guide = ConversationGuide(rag_retriever)  # Pass RAG to conversation guide
         
         logger.info("All agents initialized successfully")
         
