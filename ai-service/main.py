@@ -24,7 +24,8 @@ from agents.scenario_gen import ScenarioGenerator
 from agents.conversation import ConversationGuide
 from agents.pyq_generator import PYQGenerator
 from utils.pyq_ingestion import ingest_all_pyqs
-from fastapi.responses import FileResponse
+from utils.tts_service import tts_service
+from fastapi.responses import FileResponse, Response
 import os
 
 # Configure logging
@@ -419,6 +420,68 @@ async def ingest_pyqs_background():
         logger.info(f"PYQ ingestion complete: {results}")
     except Exception as e:
         logger.error(f"Error in background PYQ ingestion: {e}")
+
+
+# === TEXT-TO-SPEECH ENDPOINTS ===
+
+@app.post("/api/tts/synthesize")
+async def synthesize_speech(request: dict):
+    """
+    Synthesize speech from text using Google Cloud TTS.
+    
+    Request body:
+    {
+        "text": "Text to convert to speech",
+        "language_code": "en-US" (optional),
+        "voice_name": "en-US-Neural2-F" (optional),
+        "speaking_rate": 1.0 (optional),
+        "pitch": 0.0 (optional)
+    }
+    """
+    try:
+        text = request.get("text")
+        if not text:
+            raise HTTPException(status_code=400, detail="Text is required")
+        
+        # Limit text length
+        if len(text) > 5000:
+            raise HTTPException(status_code=400, detail="Text too long (max 5000 characters)")
+        
+        # Get optional parameters
+        language_code = request.get("language_code", "en-US")
+        voice_name = request.get("voice_name", "en-US-Neural2-F")  # Natural female voice
+        speaking_rate = request.get("speaking_rate", 1.0)
+        pitch = request.get("pitch", 0.0)
+        
+        logger.info(f"TTS request: {text[:50]}... (voice: {voice_name})")
+        
+        # Synthesize speech
+        audio_content = await tts_service.synthesize_speech(
+            text=text,
+            language_code=language_code,
+            voice_name=voice_name,
+            speaking_rate=speaking_rate,
+            pitch=pitch
+        )
+        
+        if not audio_content:
+            raise HTTPException(status_code=500, detail="Failed to synthesize speech")
+        
+        # Return audio as MP3
+        return Response(
+            content=audio_content,
+            media_type="audio/mpeg",
+            headers={
+                "Content-Disposition": "inline; filename=speech.mp3",
+                "Cache-Control": "public, max-age=3600"
+            }
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error synthesizing speech: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # Error handlers

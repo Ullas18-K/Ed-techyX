@@ -14,7 +14,11 @@ import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
 import { SimulationAIBot } from './SimulationAIBot';
+<<<<<<< HEAD
 import { Translate } from '@/components/Translate';
+=======
+import { TextToSpeech } from './TextToSpeech';
+>>>>>>> 6091495 (implemented cloud TTS)
 
 interface SimulationScreenProps {
   onComplete: () => void;
@@ -112,8 +116,19 @@ export function SimulationScreen({ onComplete }: SimulationScreenProps) {
           >
             <div className="flex items-start gap-3">
               <Lightbulb className="w-5 h-5 text-primary mt-1 flex-shrink-0" />
+<<<<<<< HEAD
               <div>
                 <h3 className="font-semibold text-foreground mb-2"><Translate>Welcome!</Translate></h3>
+=======
+              <div className="flex-1">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="font-semibold text-foreground">Welcome!</h3>
+                  <TextToSpeech 
+                    text={aiScenarioData.greeting} 
+                    autoPlay={true}
+                  />
+                </div>
+>>>>>>> 6091495 (implemented cloud TTS)
                 <p className="text-sm text-muted-foreground leading-relaxed">
                   {aiScenarioData.greeting}
                 </p>
@@ -128,10 +143,20 @@ export function SimulationScreen({ onComplete }: SimulationScreenProps) {
             transition={{ delay: 0.1 }}
             className="glass-card rounded-xl p-5"
           >
+<<<<<<< HEAD
             <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2">
               <BookOpen className="w-5 h-5 text-primary" />
               <Translate>Overview</Translate>
             </h3>
+=======
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-semibold text-foreground flex items-center gap-2">
+                <BookOpen className="w-5 h-5 text-primary" />
+                Overview
+              </h3>
+              <TextToSpeech text={aiScenarioData.scenarioDescription} />
+            </div>
+>>>>>>> 6091495 (implemented cloud TTS)
             <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">
               {aiScenarioData.scenarioDescription}
             </p>
@@ -155,7 +180,7 @@ export function SimulationScreen({ onComplete }: SimulationScreenProps) {
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.3 + index * 0.05 }}
-                  className="border border-border/50 rounded-lg overflow-hidden"
+                  className="border border-border/50 rounded-lg overflow-hidden group"
                 >
                   <button
                     onClick={() => toggleConcept(index)}
@@ -169,11 +194,18 @@ export function SimulationScreen({ onComplete }: SimulationScreenProps) {
                         {concept.description}
                       </span>
                     </div>
-                    {expandedConcepts.has(index) ? (
-                      <ChevronUp className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                    ) : (
-                      <ChevronDown className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                    )}
+                    <div className="flex items-center gap-1">
+                      <div onClick={(e) => e.stopPropagation()}>
+                        <TextToSpeech 
+                          text={`${concept.description}. ${concept.details}`}
+                        />
+                      </div>
+                      {expandedConcepts.has(index) ? (
+                        <ChevronUp className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                      ) : (
+                        <ChevronDown className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                      )}
+                    </div>
                   </button>
                   <AnimatePresence>
                     {expandedConcepts.has(index) && (
@@ -227,12 +259,20 @@ export function SimulationScreen({ onComplete }: SimulationScreenProps) {
             {/* Content */}
             <div className="min-h-[200px]">
               {activeTab === 'notes' && (
-                <div className="text-sm text-muted-foreground leading-relaxed space-y-3">
-                  {aiScenarioData.notes ? (
-                    <div className="whitespace-pre-wrap">{aiScenarioData.notes}</div>
-                  ) : (
-                    <p className="text-center py-8 text-muted-foreground/50">No notes available</p>
-                  )}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Comprehensive Notes</h4>
+                    {aiScenarioData.notes && (
+                      <TextToSpeech text={aiScenarioData.notes} />
+                    )}
+                  </div>
+                  <div className="text-sm text-muted-foreground leading-relaxed">
+                    {aiScenarioData.notes ? (
+                      <div className="whitespace-pre-wrap">{aiScenarioData.notes}</div>
+                    ) : (
+                      <p className="text-center py-8 text-muted-foreground/50">No notes available</p>
+                    )}
+                  </div>
                 </div>
               )}
               {activeTab === 'formulas' && (
