@@ -28,8 +28,8 @@ const ReflectionPage = () => {
   const navigate = useNavigate();
 
   const handleReflectionComplete = useCallback(() => {
-    navigate('/mastery');
-    toast.success('🎉 Congratulations! You completed the journey!');
+    navigate('/flashcards');
+    toast.success('📚 Time for visual flashcards!');
   }, [navigate]);
 
   return (

@@ -25,6 +25,7 @@ class Settings(BaseSettings):
     # AI Model Configuration
     EMBEDDING_MODEL: str = "textembedding-gecko@003"
     GENERATION_MODEL: str = "gemini-1.5-flash"
+    GEMINI_API_KEY: str = ""  # Get from https://aistudio.google.com/
     
     # RAG Configuration
     CHUNK_SIZE: int = 1000

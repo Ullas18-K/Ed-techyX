@@ -5,6 +5,7 @@ import connectDB from './config/database.js';
 import authRoutes from './routes/auth.js';
 import aiRoutes from './routes/ai.js';
 import translationRoutes from './routes/translation.js';
+import flashcardRoutes from './routes/flashcards.js';
 
 // Load environment variables
 dotenv.config();
@@ -55,6 +56,7 @@ app.use((req, res, next) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/translate', translationRoutes);
+app.use('/api/visual-flashcards', flashcardRoutes);
 
 // Health check route
 app.get('/api/health', (req, res) => {
@@ -83,7 +85,7 @@ app.use((err, req, res, next) => {
 });
 
 // Start server
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 9000;
 const server = app.listen(PORT, () => {
   console.log(`\n🚀 Server running on port ${PORT}`);
   console.log(`📍 API available at http://localhost:${PORT}/api`);

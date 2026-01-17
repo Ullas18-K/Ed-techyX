@@ -1,8 +1,10 @@
-import { useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { QuizScreen } from '@/components/quiz/QuizScreen';
 import { useRealtimeStudyRoomStore } from '@/lib/realtimeStudyRoomStore';
+import { useLearningStore } from '@/lib/learningStore';
+import { useAuthStore } from '@/lib/authStore';
 import { toast } from 'sonner';
 
 const pageVariants = {
@@ -28,6 +30,48 @@ const containerVariants = {
 const QuizPage = () => {
   const navigate = useNavigate();
   const { roomId, enableOpticsPuzzle } = useRealtimeStudyRoomStore();
+  const { currentScenario, aiScenarioData } = useLearningStore();
+  const { token } = useAuthStore();
+
+  // Trigger flashcard generation on mount
+  useEffect(() => {
+    startFlashcardGeneration();
+  }, []);
+
+  const startFlashcardGeneration = async () => {
+    try {
+      if (!aiScenarioData || !currentScenario) {
+        console.warn('No scenario data available for flashcard generation');
+        return;
+      }
+
+      const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      
+      // Store session ID for later retrieval
+      localStorage.setItem('flashcard_session_id', sessionId);
+
+      // Fire-and-forget request to start generation
+      fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:9000/api'}/visual-flashcards/start`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          grade: aiScenarioData.gradeLevel,
+          subject: aiScenarioData.subject,
+          topic: currentScenario.topic,
+          sessionId
+        })
+      }).catch(err => {
+        console.error('Failed to start flashcard generation:', err);
+      });
+
+      console.log('🎨 Flashcard generation started in background');
+    } catch (err) {
+      console.error('Error starting flashcard generation:', err);
+    }
+  };
 
   const handleQuizComplete = useCallback(() => {
     // Check if in multiplayer room and if puzzle is enabled
