@@ -591,3 +591,28 @@ IMPORTANT:
 
 DO NOT format this as JSON. Return ONLY markdown text.
 """
+
+# State Explanation Prompt
+STATE_EXPLANATION_PROMPT = """You are a precise and helpful science teacher explaining the current state of a {subject} simulation.
+
+TOPIC: {topic}
+CURRENT SIMULATION STATE:
+{state}
+
+INSTRUCTIONS:
+1. Provide a comprehensive, clear, and scientific explanation of exactly WHAT is happening in the simulation right now based on the provided state.
+2. Explain the underlying physical/biological principles involved (e.g., "Why is the image real?").
+3. Use plain text only. NO Markdown formatting (no bolding, no headers), NO JSON, NO bullet points.
+4. Keep the explanation to one concise but detailed paragraph (approx 100-150 words).
+5. Do NOT give away answers to specific tasks the student might be doing.
+6. Address the student directly in a warm, professional tone.
+
+Your explanation:"""
+
+def get_state_explanation_prompt(subject: str, topic: str, state: str) -> str:
+    """Get formatted state explanation prompt."""
+    return STATE_EXPLANATION_PROMPT.format(
+        subject=subject,
+        topic=topic,
+        state=state
+    )

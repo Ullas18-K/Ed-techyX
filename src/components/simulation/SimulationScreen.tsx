@@ -3,10 +3,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
   Home, ChevronDown, ChevronUp, ArrowRight, BookOpen,
-  FileText, Lightbulb, GraduationCap, CheckCircle2
+  FileText, Lightbulb, GraduationCap, CheckCircle2, Download
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useLearningStore } from '@/lib/learningStore';
+import { exportStudyMaterialToPDF } from '@/lib/pdfExport';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import ReactMarkdown from 'react-markdown';
@@ -94,6 +95,38 @@ export function SimulationScreen({ onComplete }: SimulationScreenProps) {
             className="gap-2"
           >
             <Home className="w-4 h-4" /> <Translate>Home</Translate>
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              if (aiScenarioData && currentScenario) {
+                exportStudyMaterialToPDF({
+                  title: aiScenarioData.title,
+                  subject: aiScenarioData.subject,
+                  gradeLevel: aiScenarioData.gradeLevel,
+                  scenarioDescription: aiScenarioData.scenarioDescription,
+                  keyConcepts: aiScenarioData.keyConcepts.map(kc => ({
+                    description: kc.description,
+                    details: kc.details
+                  })),
+                  notes: aiScenarioData.notes,
+                  formulas: aiScenarioData.formulas,
+                  derivations: currentScenario.derivations,
+                  pyqs: pyqData?.questions.map(q => ({
+                    questionText: q.questionText,
+                    answer: q.answer,
+                    answerExplanation: q.answerExplanation,
+                    year: q.year,
+                    source: q.source
+                  }))
+                });
+                toast.success('Downloading study material...');
+              }
+            }}
+            className="gap-2"
+          >
+            <Download className="w-4 h-4" /> <Translate>Download Notes</Translate>
           </Button>
           <Button
             variant="hero"

@@ -49,6 +49,7 @@ app.add_middleware(
         settings.BACKEND_URL,
         settings.FRONTEND_URL,
         "http://localhost:5173",
+        "http://localhost:8081",
         "http://localhost:4000",
         "http://localhost:8080",
         "http://localhost:9000",

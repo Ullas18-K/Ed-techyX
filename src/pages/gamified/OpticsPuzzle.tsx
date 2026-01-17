@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     ChevronRight,
+    ChevronDown,
     RotateCcw,
     Lightbulb,
     CheckCircle2,
@@ -12,7 +13,9 @@ import {
     ArrowRight,
     X,
     Home,
-    PartyPopper
+    PartyPopper,
+    Volume2,
+    VolumeX
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -22,6 +25,7 @@ import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { useLearningStore } from '@/lib/learningStore';
 import { useRealtimeStudyRoomStore } from '@/lib/realtimeStudyRoomStore';
+import { Translate } from '@/components/Translate';
 
 // --- TYPES & GAME STATE ---
 
@@ -108,7 +112,9 @@ const PuzzlePenman = ({
     onHint,
     canHint,
     onClose,
-    emotion = 'neutral'
+    emotion = 'neutral',
+    isSpeechEnabled,
+    onToggleSpeech
 }: {
     text: string;
     visible: boolean;
@@ -116,6 +122,8 @@ const PuzzlePenman = ({
     canHint: boolean;
     onClose: () => void;
     emotion?: 'neutral' | 'happy' | 'start';
+    isSpeechEnabled: boolean;
+    onToggleSpeech: () => void;
 }) => {
     return (
         <AnimatePresence>
@@ -128,31 +136,41 @@ const PuzzlePenman = ({
                     className="absolute bottom-6 right-6 z-50 flex items-end gap-3 pointer-events-none"
                 >
                     {/* Bubble */}
-                    <div className="bg-white/95 backdrop-blur-xl p-4 rounded-2xl shadow-2xl border border-blue-100 max-w-[280px] pointer-events-auto relative">
-                        <button
-                            onClick={onClose}
-                            className="absolute top-2 right-2 text-slate-400 hover:text-slate-600"
-                        >
-                            <X size={14} />
-                        </button>
-
-                        <div className="flex items-center gap-2 mb-2 pb-2 border-b border-gray-100">
-                            <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
-                            <span className="text-[10px] uppercase font-bold text-blue-600 tracking-wider">Optics Guide</span>
+                    <div className="glass-card p-4 rounded-2xl shadow-xl border border-gray-200/60 max-w-[280px] pointer-events-auto relative">
+                        <div className="flex items-center justify-between mb-2 pb-2 border-b border-gray-200">
+                            <div className="flex items-center gap-2">
+                                <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+                                <span className="text-[10px] uppercase font-bold text-primary tracking-wider"><Translate>Optics Guide</Translate></span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                                <button
+                                    onClick={onToggleSpeech}
+                                    className={`p-1 rounded-md transition-colors ${isSpeechEnabled ? 'text-primary bg-primary/10 hover:bg-primary/20' : 'text-gray-400 hover:bg-gray-100'}`}
+                                    title={isSpeechEnabled ? "Turn off speech" : "Turn on speech"}
+                                >
+                                    {isSpeechEnabled ? <Volume2 size={12} /> : <VolumeX size={12} />}
+                                </button>
+                                <button
+                                    onClick={onClose}
+                                    className="p-1 rounded-md text-slate-400 hover:text-slate-600 hover:bg-gray-100"
+                                >
+                                    <X size={12} />
+                                </button>
+                            </div>
                         </div>
-                        <p className="text-sm text-slate-700 font-medium leading-relaxed">
-                            {text}
+                        <p className="text-sm text-gray-700 font-medium leading-relaxed">
+                            <Translate>{text}</Translate>
                         </p>
                         {canHint && (
                             <div className="mt-3 pt-2">
                                 <Button
                                     size="sm"
                                     variant="outline"
-                                    className="w-full text-xs h-7 border-yellow-200 bg-yellow-50 hover:bg-yellow-100 text-yellow-700"
+                                    className="w-full text-xs h-7 border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-lg"
                                     onClick={onHint}
                                 >
                                     <Lightbulb className="w-3 h-3 mr-1 fill-yellow-400 text-yellow-500" />
-                                    Need a Hint?
+                                    <Translate>Need a Hint?</Translate>
                                 </Button>
                             </div>
                         )}
@@ -198,6 +216,53 @@ export default function OpticsPuzzle() {
     const [penmanVisible, setPenmanVisible] = useState(true);
     const [hintAvailable, setHintAvailable] = useState(false);
     const [penmanEmotion, setPenmanEmotion] = useState<'neutral' | 'happy' | 'start'>('start');
+    const [isSpeechEnabled, setIsSpeechEnabled] = useState(false);
+
+    const synthRef = useRef<SpeechSynthesis | null>(null);
+
+    // Initialize speech synthesis
+    useEffect(() => {
+        if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+            synthRef.current = window.speechSynthesis;
+
+            const handleVoicesChanged = () => {
+                // This triggers voice loading in some browsers
+                if (synthRef.current) synthRef.current.getVoices();
+            };
+
+            synthRef.current.addEventListener('voiceschanged', handleVoicesChanged);
+            return () => {
+                if (synthRef.current) {
+                    synthRef.current.removeEventListener('voiceschanged', handleVoicesChanged);
+                    synthRef.current.cancel();
+                }
+            };
+        }
+    }, []);
+
+    const speakText = (text: string) => {
+        if (!synthRef.current || !isSpeechEnabled) return;
+
+        synthRef.current.cancel();
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.rate = 1.1;
+        utterance.pitch = 1.2; // Slightly higher pitch for Penman
+
+        const voices = synthRef.current.getVoices();
+        const preferredVoice = voices.find(v => v.name.includes('Google') || v.name.includes('Natural'))
+            || voices.find(v => v.lang.startsWith('en'))
+            || voices[0];
+
+        if (preferredVoice) utterance.voice = preferredVoice;
+        synthRef.current.speak(utterance);
+    };
+
+    // Auto-speak when Penman text changes
+    useEffect(() => {
+        if (penmanText && isSpeechEnabled) {
+            speakText(penmanText);
+        }
+    }, [penmanText, isSpeechEnabled]);
 
     const [problemPanelOpen, setProblemPanelOpen] = useState(true);
     const [levelComplete, setLevelComplete] = useState(false);
@@ -527,26 +592,26 @@ export default function OpticsPuzzle() {
     const handlePuzzleComplete = (finalScore: number) => {
         // Save puzzle score locally
         savePuzzleScore(finalScore);
-        
+
         // If in multiplayer, sync score
         if (roomId) {
             submitPuzzleScore(finalScore);
             updateMyPuzzleScore(finalScore);
         }
-        
+
         toast.success(`Puzzle completed! You earned ${finalScore} points!`);
     };
 
     const handleSkipPuzzle = () => {
         // Award 0 points for skipping
         savePuzzleScore(0);
-        
+
         // If in multiplayer, sync 0 score
         if (roomId) {
             submitPuzzleScore(0);
             updateMyPuzzleScore(0);
         }
-        
+
         toast.info('Puzzle skipped. Moving to reflection...');
         navigate('/reflection');
     };
@@ -577,34 +642,35 @@ export default function OpticsPuzzle() {
     const updateL1 = (updates: Partial<Level1State>) => setL1(prev => ({ ...prev, ...updates }));
 
     return (
-        <div className="w-full h-screen bg-slate-950 flex flex-col text-slate-100 font-sans overflow-hidden">
+        <div className="w-full h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-gray-100 flex flex-col text-gray-800 font-sans overflow-hidden">
 
-            {/* GAME START OVERLAY */}
+            {/* GAME START OVERLAY - FLOATING */}
             {!gameStarted && (
-                <div className="fixed inset-0 z-[100] bg-slate-900 flex flex-col items-center justify-center p-6 text-center">
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
                     <motion.div
-                        initial={{ scale: 0.8, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        className="max-w-md w-full"
+                        initial={{ scale: 0.85, opacity: 0, y: 20 }}
+                        animate={{ scale: 1, opacity: 1, y: 0 }}
+                        transition={{ type: "spring", stiffness: 200, damping: 20 }}
+                        className="glass-card border border-gray-200 rounded-2xl shadow-2xl p-8 w-full max-w-md text-center"
                     >
                         <motion.div
                             animate={{ rotate: [-5, 5, -5] }}
                             transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
-                            className="w-40 h-40 mx-auto mb-8 relative"
+                            className="w-28 h-28 mx-auto mb-6 relative"
                         >
                             <div className="absolute inset-0 bg-blue-500/30 blur-2xl rounded-full" />
                             <img src="/penman.png" alt="Penman" className="w-full h-full object-contain relative z-10" />
                         </motion.div>
 
-                        <h1 className="text-4xl font-black text-white mb-4">Ready to Start?</h1>
-                        <p className="text-slate-400 mb-8 text-lg">Use the controls to solve the optics puzzles. Watch your score!</p>
+                        <h1 className="text-2xl font-black text-gray-900 mb-3"><Translate>Ready to Start?</Translate></h1>
+                        <p className="text-sm text-gray-600 mb-6 leading-relaxed"><Translate>Use the controls to solve the optics puzzles. Watch your score!</Translate></p>
 
                         <Button
                             onClick={handleStart}
-                            className="h-16 px-12 text-xl font-bold bg-blue-600 hover:bg-blue-500 rounded-2xl shadow-[0_0_40px_rgba(37,99,235,0.3)] hover:scale-105 transition-all"
+                            className="w-full h-12 px-8 text-base font-bold bg-primary hover:bg-primary/90 text-white rounded-xl shadow-lg glow-subtle hover:scale-105 transition-all"
                         >
-                            <Play className="mr-3 w-6 h-6 fill-white" />
-                            LET'S GO!
+                            <Play className="mr-2 w-5 h-5 fill-white" />
+                            <Translate>LET'S GO!</Translate>
                         </Button>
                     </motion.div>
                 </div>
@@ -613,25 +679,25 @@ export default function OpticsPuzzle() {
             {gameComplete && <ConfettiRain />}
 
             {/* TOP BAR */}
-            <div className="h-16 border-b border-slate-800 bg-slate-900/50 flex items-center justify-between px-6 shrink-0 z-20">
+            <div className="h-16 border-b border-gray-200 glass-subtle flex items-center justify-between px-6 shrink-0 z-20 rounded-b-2xl shadow-sm">
                 <div className="flex items-center gap-4">
                     <Button variant="ghost" size="icon" onClick={() => navigate('/')}>
-                        <ArrowRight className="w-5 h-5 rotate-180 text-slate-400" />
+                        <ArrowRight className="w-5 h-5 rotate-180 text-gray-600" />
                     </Button>
                     <div>
-                        <h1 className="font-bold text-lg tracking-wide text-white">RAY OPTICS <span className="text-blue-500">CHALLENGE</span></h1>
-                        <div className="flex items-center gap-2 text-[10px] uppercase font-bold text-slate-500">
-                            <span>Level {level}</span>
-                            <span className="w-1 h-1 bg-slate-600 rounded-full" />
-                            <span>{LEVELS[level].title}</span>
+                        <h1 className="font-bold text-lg tracking-wide text-gray-900"><Translate>RAY OPTICS</Translate> <span className="text-primary"><Translate>CHALLENGE</Translate></span></h1>
+                        <div className="flex items-center gap-2 text-[10px] uppercase font-bold text-gray-500">
+                            <span><Translate>Level</Translate> {level}</span>
+                            <span className="w-1 h-1 bg-gray-400 rounded-full" />
+                            <span><Translate>{LEVELS[level].title}</Translate></span>
                         </div>
                     </div>
                 </div>
 
                 <div className="flex items-center gap-6">
                     <div className="flex flex-col items-end">
-                        <span className="text-[10px] uppercase font-bold text-slate-500">Current Score</span>
-                        <span className={`text-2xl font-mono font-bold ${score < 50 ? 'text-red-400' : 'text-green-400'}`}>
+                        <span className="text-[10px] uppercase font-bold text-gray-500"><Translate>Current Score</Translate></span>
+                        <span className={`text-2xl font-mono font-bold ${score < 50 ? 'text-red-500' : 'text-green-600'}`}>
                             {score}
                         </span>
                     </div>
@@ -639,226 +705,266 @@ export default function OpticsPuzzle() {
             </div>
 
             {/* CONTENT */}
-            <div className="flex-1 flex overflow-hidden">
+            <div className="flex-1 flex flex-col overflow-hidden">
 
-                {/* CANVAS */}
-                <div className="flex-1 relative bg-black" ref={containerRef}>
-
-                    {/* PROBLEM PANEL */}
-                    <AnimatePresence>
-                        {problemPanelOpen && gameStarted && (
-                            <motion.div
-                                initial={{ y: -80, opacity: 0 }}
-                                animate={{ y: 0, opacity: 1 }}
-                                exit={{ y: -80, opacity: 0 }}
-                                transition={{ type: "spring", stiffness: 180, damping: 18 }}
-                                className="absolute top-4 left-0 right-0 z-30 flex justify-center px-4"
-                            >
-                                <Card className="w-full max-w-4xl bg-gradient-to-br from-slate-100 via-slate-50 to-indigo-100 backdrop-blur-xl border border-indigo-300/40 rounded-2xl p-6 shadow-[0_20px_60px_rgba(79,70,229,0.25)] ring-1 ring-indigo-400/20 flex items-start gap-4 relative">
-                                    <div className="w-1.5 rounded-full bg-gradient-to-b from-indigo-500 to-violet-500 absolute left-6 top-6 bottom-6" />
-                                    <div className="flex-1 pl-4">
-                                        <h3 className="font-semibold text-slate-900 mb-2 flex items-center gap-2 text-lg">
-                                            <Trophy className="w-5 h-5 text-yellow-600" />
-                                            {LEVELS[level].title}: {LEVELS[level].goal}
+                {/* PROBLEM PANEL - FIXED HEADER */}
+                <AnimatePresence>
+                    {problemPanelOpen && gameStarted && (
+                        <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ type: "spring", stiffness: 180, damping: 18 }}
+                            className="shrink-0 border-b border-gray-200 glass-subtle shadow-sm z-30"
+                        >
+                            <div className="px-4 py-2">
+                                <Card className="glass-card border border-gray-200/60 rounded-xl p-3 shadow-sm flex items-start gap-3 relative">
+                                    <div className="w-0.5 rounded-full bg-gradient-to-b from-blue-500 to-blue-600 absolute left-3 top-3 bottom-3" />
+                                    <div className="flex-1 pl-2">
+                                        <h3 className="font-semibold text-gray-900 mb-1 flex items-center gap-1.5 text-sm">
+                                            <Trophy className="w-3.5 h-3.5 text-amber-600" />
+                                            <Translate>{LEVELS[level].title}</Translate>: <Translate>{LEVELS[level].goal}</Translate>
                                         </h3>
-                                        <p className="text-sm text-slate-700 mb-4 leading-relaxed">
-                                            {LEVELS[level].desc}
+                                        <p className="text-[11px] text-gray-600 mb-2 leading-relaxed">
+                                            <Translate>{LEVELS[level].desc}</Translate>
                                         </p>
-                                        <div className="flex flex-wrap gap-3">
-                                            <Badge variant="outline" className="border-indigo-400/40 bg-indigo-50 text-indigo-700 font-mono text-xs">
-                                                Constraints: {LEVELS[level].constraints}
-                                            </Badge>
-                                        </div>
+                                        <Badge variant="outline" className="border-primary/40 bg-blue-50 text-primary font-mono text-[9px] rounded-md px-1.5 py-0.5">
+                                            <Translate>Constraints</Translate>: <Translate>{LEVELS[level].constraints}</Translate>
+                                        </Badge>
                                     </div>
-                                    <Button variant="ghost" size="icon" onClick={() => setProblemPanelOpen(false)} className="text-slate-500 hover:text-slate-900 hover:bg-slate-200/60 rounded-full">
-                                        <X size={18} />
+                                    <Button variant="ghost" size="icon" onClick={() => setProblemPanelOpen(false)} className="text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded-full shrink-0 w-6 h-6">
+                                        <X size={14} />
                                     </Button>
                                 </Card>
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+
+                {/* MAIN GAME AREA */}
+                <div className="flex-1 flex overflow-hidden">
+
+                    {/* CANVAS */}
+                    <div className="flex-1 relative bg-black rounded-2xl overflow-hidden" ref={containerRef}>
+
+                        {/* SHOW PROBLEM BUTTON - When panel is closed */}
+                        {!problemPanelOpen && gameStarted && (
+                            <motion.div
+                                initial={{ y: -20, opacity: 0 }}
+                                animate={{ y: 0, opacity: 1 }}
+                                className="absolute top-4 left-1/2 -translate-x-1/2 z-30"
+                            >
+                                <Button
+                                    onClick={() => setProblemPanelOpen(true)}
+                                    className="glass-card border border-gray-200/60 shadow-lg text-gray-700 hover:text-gray-900 px-4 py-2 h-auto rounded-full"
+                                    variant="ghost"
+                                >
+                                    <Trophy className="w-4 h-4 mr-2 text-amber-600" />
+                                    <span className="text-xs font-semibold"><Translate>Show Task</Translate></span>
+                                    <ChevronDown className="w-3 h-3 ml-1" />
+                                </Button>
                             </motion.div>
                         )}
-                    </AnimatePresence>
 
-                    {/* LEVEL COMPLETE MODAL */}
-                    <AnimatePresence>
-                        {levelComplete && !gameComplete && (
-                            <div className="absolute inset-0 z-40 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+                        {/* LEVEL COMPLETE MODAL - FLOATING */}
+                        <AnimatePresence>
+                            {levelComplete && !gameComplete && (
                                 <motion.div
-                                    initial={{ scale: 0.9, opacity: 0 }}
-                                    animate={{ scale: 1, opacity: 1 }}
-                                    className="bg-slate-900 border border-slate-700 p-8 rounded-3xl shadow-2xl max-w-md w-full text-center"
+                                    initial={{ scale: 0.8, opacity: 0, y: 20 }}
+                                    animate={{ scale: 1, opacity: 1, y: 0 }}
+                                    exit={{ scale: 0.8, opacity: 0, y: 20 }}
+                                    className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-40"
                                 >
-                                    <div className="w-20 h-20 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
-                                        <CheckCircle2 className="w-10 h-10 text-green-500" />
+                                    <div className="glass-card border border-gray-200 p-6 rounded-2xl shadow-2xl w-[320px] text-center">
+                                        <div className="w-14 h-14 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                                            <CheckCircle2 className="w-7 h-7 text-green-600" />
+                                        </div>
+                                        <h2 className="text-xl font-bold text-gray-900 mb-2 leading-tight"><Translate>Level Cleared!</Translate></h2>
+                                        <p className="text-xs text-gray-600 mb-5"><Translate>Nice work! Penman is impressed with your logic. Ready for the next challenge?</Translate></p>
+                                        <Button onClick={nextLevel} className="w-full h-10 text-sm bg-primary hover:bg-primary/90 text-white rounded-lg">
+                                            <Translate>Next Level</Translate> <ArrowRight className="ml-1.5 w-4 h-4" />
+                                        </Button>
                                     </div>
-                                    <h2 className="text-3xl font-bold text-white mb-2 leading-tight">Level Cleared!</h2>
-                                    <p className="text-slate-400 mb-8">Nice work! Penman is impressed with your logic. Ready for the next challenge?</p>
-                                    <Button onClick={nextLevel} className="w-full h-12 text-lg bg-blue-600 hover:bg-blue-500 rounded-xl">
-                                        Next Level <ArrowRight className="ml-2 w-5 h-5" />
-                                    </Button>
                                 </motion.div>
-                            </div>
-                        )}
-                    </AnimatePresence>
+                            )}
+                        </AnimatePresence>
 
-                    {/* GAME COMPLETE MODAL */}
-                    <AnimatePresence>
-                        {gameComplete && (
-                            <div className="absolute inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
-                                <motion.div
-                                    initial={{ y: 50, opacity: 0 }}
-                                    animate={{ y: 0, opacity: 1 }}
-                                    className="text-center max-w-lg"
-                                >
+                        {/* GAME COMPLETE MODAL - FLOATING POPUP */}
+                        <AnimatePresence>
+                            {gameComplete && (
+                                <div className="absolute inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-md">
                                     <motion.div
-                                        animate={{ rotate: [0, 10, -10, 0] }}
-                                        transition={{ repeat: Infinity, duration: 2 }}
-                                        className="inline-block mb-6"
+                                        initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                                        animate={{ scale: 1, opacity: 1, y: 0 }}
+                                        exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                                        className="glass-card border border-white/20 p-10 rounded-[2.5rem] shadow-2xl max-w-lg w-full text-center relative overflow-hidden"
                                     >
-                                        <PartyPopper className="w-24 h-24 text-yellow-500" />
+                                        <div className="absolute inset-0 bg-gradient-to-b from-primary/10 to-transparent pointer-events-none" />
+
+                                        <motion.div
+                                            animate={{ rotate: [0, 10, -10, 0], scale: [1, 1.1, 1.1, 1] }}
+                                            transition={{ repeat: Infinity, duration: 2 }}
+                                            className="inline-block mb-6 relative z-10"
+                                        >
+                                            <PartyPopper className="w-20 h-20 text-yellow-500 drop-shadow-lg" />
+                                        </motion.div>
+
+                                        <h1 className="text-4xl font-black text-gradient mb-4 relative z-10">
+                                            <Translate>YOU DID IT!</Translate>
+                                        </h1>
+
+                                        <p className="text-lg text-gray-700 mb-8 font-light leading-relaxed relative z-10">
+                                            <Translate>You've successfully completed the Ray Optics Challenge with a score of</Translate> <span className="text-green-600 font-bold">{score}</span>.
+                                        </p>
+
+                                        <div className="flex flex-col sm:flex-row gap-3 justify-center relative z-10">
+                                            <Button
+                                                onClick={() => navigate('/')}
+                                                variant="outline"
+                                                className="h-12 px-6 text-lg rounded-xl font-bold border-gray-300 hover:bg-gray-50 flex-1"
+                                            >
+                                                <Home className="mr-2 w-5 h-5" /> <Translate>Home</Translate>
+                                            </Button>
+                                            <Button
+                                                onClick={handleContinueToReflection}
+                                                className="h-12 px-6 text-lg bg-primary hover:bg-primary/90 text-white rounded-xl font-bold shadow-lg glow-subtle flex-1"
+                                            >
+                                                <Translate>Continue</Translate> <ArrowRight className="ml-2 w-5 h-5" />
+                                            </Button>
+                                        </div>
                                     </motion.div>
-                                    <h1 className="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400 mb-4">
-                                        YOU DID IT!
-                                    </h1>
-                                    <p className="text-xl text-slate-300 mb-8 font-light">
-                                        You’ve successfully completed the Ray Optics Challenge with a score of <span className="text-green-400 font-bold">{score}</span>.
-                                    </p>
-                                    <div className="flex gap-4 justify-center">
-                                        <Button onClick={() => navigate('/')} variant="outline" className="h-14 px-8 text-xl rounded-full font-bold">
-                                            <Home className="mr-2 w-5 h-5" /> Home
-                                        </Button>
-                                        <Button onClick={handleContinueToReflection} className="h-14 px-8 text-xl bg-white text-black hover:bg-slate-200 rounded-full font-bold shadow-[0_0_30px_rgba(255,255,255,0.3)]">
-                                            Continue to Reflection <ArrowRight className="ml-2 w-5 h-5" />
-                                        </Button>
-                                    </div>
-                                </motion.div>
+                                </div>
+                            )}
+                        </AnimatePresence>
+
+
+                        <canvas
+                            ref={canvasRef}
+                            className="w-full h-full block"
+                        />
+
+                        <PuzzlePenman
+                            text={penmanText}
+                            visible={penmanVisible && !levelComplete && !gameComplete && gameStarted}
+                            canHint={hintAvailable && score >= 10}
+                            onHint={useHint}
+                            onClose={() => setPenmanVisible(false)}
+                            emotion={penmanEmotion}
+                            isSpeechEnabled={isSpeechEnabled}
+                            onToggleSpeech={() => setIsSpeechEnabled(!isSpeechEnabled)}
+                        />
+                    </div>
+
+                    {/* SIDEBAR */}
+                    <div className="w-80 glass-card border-l border-gray-200/60 p-6 flex flex-col gap-6 z-20 shadow-xl rounded-l-2xl">
+                        <div className="flex items-center gap-2 mb-4 p-3 bg-blue-50/50 rounded-xl border border-blue-100/50">
+                            <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center text-primary font-bold">
+                                {level}
                             </div>
-                        )}
-                    </AnimatePresence>
-
-                    <canvas
-                        ref={canvasRef}
-                        className="w-full h-full block"
-                    />
-
-                    <PuzzlePenman
-                        text={penmanText}
-                        visible={penmanVisible && !levelComplete && !gameComplete && gameStarted}
-                        canHint={hintAvailable && score >= 10}
-                        onHint={useHint}
-                        onClose={() => setPenmanVisible(false)}
-                        emotion={penmanEmotion}
-                    />
-                </div>
-
-                {/* SIDEBAR */}
-                <div className="w-80 bg-slate-900 border-l border-slate-800 p-6 flex flex-col gap-6 z-20 shadow-xl">
-                    <div className="flex items-center gap-2 mb-4">
-                        <div className="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center text-blue-500 font-bold">
-                            {level}
+                            <h2 className="font-bold text-gray-900"><Translate>Control Panel</Translate></h2>
                         </div>
-                        <h2 className="font-bold text-white">Control Panel</h2>
-                    </div>
 
-                    <div className="space-y-6 flex-1">
-                        {level === 1 && (
-                            <>
-                                <div className="space-y-3">
-                                    <label className="text-xs font-bold text-slate-500 uppercase">Input Mirror</label>
-                                    <div className="grid grid-cols-2 gap-2">
-                                        {[0, 45, 90, 135].map(a => (
-                                            <Button
-                                                key={a}
-                                                variant={l1.m1Angle === a ? "default" : "outline"}
-                                                className={l1.m1Angle === a ? "bg-blue-600" : "border-slate-700 text-slate-300"}
-                                                onClick={() => updateL1({ m1Angle: a })}
-                                                disabled={levelComplete}
-                                            >
-                                                {a}°
-                                            </Button>
-                                        ))}
+                        <div className="space-y-6 flex-1">
+                            {level === 1 && (
+                                <>
+                                    <div className="space-y-3 p-4 bg-white/60 rounded-xl border border-gray-100 shadow-sm">
+                                        <label className="text-xs font-bold text-gray-500 uppercase"><Translate>Input Mirror</Translate></label>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            {[0, 45, 90, 135].map(a => (
+                                                <Button
+                                                    key={a}
+                                                    variant={l1.m1Angle === a ? "default" : "outline"}
+                                                    className={l1.m1Angle === a ? "bg-primary text-white" : "border-gray-300 text-gray-700 hover:bg-gray-50"}
+                                                    onClick={() => updateL1({ m1Angle: a })}
+                                                    disabled={levelComplete}
+                                                >
+                                                    {a}°
+                                                </Button>
+                                            ))}
+                                        </div>
                                     </div>
-                                </div>
-                                <div className="space-y-3">
-                                    <label className="text-xs font-bold text-slate-500 uppercase">Output Mirror</label>
-                                    <div className="grid grid-cols-2 gap-2">
-                                        {[0, 45, 90, 135].map(a => (
-                                            <Button
-                                                key={a}
-                                                variant={l1.m2Angle === a ? "default" : "outline"}
-                                                className={l1.m2Angle === a ? "bg-blue-600" : "border-slate-700 text-slate-300"}
-                                                onClick={() => updateL1({ m2Angle: a })}
-                                                disabled={levelComplete}
-                                            >
-                                                {a}°
-                                            </Button>
-                                        ))}
+                                    <div className="space-y-3 p-4 bg-white/60 rounded-xl border border-gray-100 shadow-sm">
+                                        <label className="text-xs font-bold text-gray-500 uppercase"><Translate>Output Mirror</Translate></label>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            {[0, 45, 90, 135].map(a => (
+                                                <Button
+                                                    key={a}
+                                                    variant={l1.m2Angle === a ? "default" : "outline"}
+                                                    className={l1.m2Angle === a ? "bg-primary text-white" : "border-gray-300 text-gray-700 hover:bg-gray-50"}
+                                                    onClick={() => updateL1({ m2Angle: a })}
+                                                    disabled={levelComplete}
+                                                >
+                                                    {a}°
+                                                </Button>
+                                            ))}
+                                        </div>
                                     </div>
-                                </div>
-                            </>
-                        )}
-                        {level === 2 && (
-                            <>
-                                <div className="space-y-3">
-                                    <label className="text-xs font-bold text-slate-500 uppercase">Lens Type</label>
-                                    <div className="flex flex-col gap-2">
-                                        <Button disabled={levelComplete} variant={l2.lensType === 'glass_convex' ? "default" : "outline"} onClick={() => setL2(p => ({ ...p, lensType: 'glass_convex' }))}>Convex (Converging)</Button>
-                                        <Button disabled={levelComplete} variant={l2.lensType === 'glass_concave' ? "default" : "outline"} onClick={() => setL2(p => ({ ...p, lensType: 'glass_concave' }))}>Concave (Diverging)</Button>
+                                </>
+                            )}
+                            {level === 2 && (
+                                <>
+                                    <div className="space-y-3 p-4 bg-white/60 rounded-xl border border-gray-100 shadow-sm">
+                                        <label className="text-xs font-bold text-gray-500 uppercase"><Translate>Lens Type</Translate></label>
+                                        <div className="flex flex-col gap-2">
+                                            <Button disabled={levelComplete} variant={l2.lensType === 'glass_convex' ? "default" : "outline"} onClick={() => setL2(p => ({ ...p, lensType: 'glass_convex' }))}><Translate>Convex (Converging)</Translate></Button>
+                                            <Button disabled={levelComplete} variant={l2.lensType === 'glass_concave' ? "default" : "outline"} onClick={() => setL2(p => ({ ...p, lensType: 'glass_concave' }))}><Translate>Concave (Diverging)</Translate></Button>
+                                        </div>
                                     </div>
-                                </div>
-                                <div className="space-y-3">
-                                    <label className="text-xs font-bold text-slate-500 uppercase">Source Position</label>
-                                    <div className="flex gap-2">
-                                        {(['near', 'mid', 'far'] as const).map(p => (
-                                            <Button key={p} size="sm" disabled={levelComplete} variant={l2.lensPos === p ? "default" : "outline"} onClick={() => setL2(prev => ({ ...prev, lensPos: p }))} className="flex-1">{p.toUpperCase()}</Button>
-                                        ))}
+                                    <div className="space-y-3 p-4 bg-white/60 rounded-xl border border-gray-100 shadow-sm">
+                                        <label className="text-xs font-bold text-gray-500 uppercase"><Translate>Source Position</Translate></label>
+                                        <div className="flex gap-2">
+                                            {(['near', 'mid', 'far'] as const).map(p => (
+                                                <Button key={p} size="sm" disabled={levelComplete} variant={l2.lensPos === p ? "default" : "outline"} onClick={() => setL2(prev => ({ ...prev, lensPos: p }))} className="flex-1">{p.toUpperCase()}</Button>
+                                            ))}
+                                        </div>
                                     </div>
-                                </div>
-                            </>
-                        )}
-                        {level === 3 && (
-                            <>
-                                <div className="space-y-3">
-                                    <label className="text-xs font-bold text-slate-500 uppercase">Core Material</label>
-                                    <div className="flex flex-col gap-2">
-                                        <Button disabled={levelComplete} variant={l3.coreMaterial === 'water' ? "default" : "outline"} onClick={() => setL3(p => ({ ...p, coreMaterial: 'water' }))}>Water (n=1.33)</Button>
-                                        <Button disabled={levelComplete} variant={l3.coreMaterial === 'glass' ? "default" : "outline"} onClick={() => setL3(p => ({ ...p, coreMaterial: 'glass' }))}>Glass (n=1.5)</Button>
-                                        <Button disabled={levelComplete} variant={l3.coreMaterial === 'diamond' ? "default" : "outline"} onClick={() => setL3(p => ({ ...p, coreMaterial: 'diamond' }))}>Diamond (n=2.4)</Button>
+                                </>
+                            )}
+                            {level === 3 && (
+                                <>
+                                    <div className="space-y-3 p-4 bg-white/60 rounded-xl border border-gray-100 shadow-sm">
+                                        <label className="text-xs font-bold text-gray-500 uppercase"><Translate>Core Material</Translate></label>
+                                        <div className="flex flex-col gap-2">
+                                            <Button disabled={levelComplete} variant={l3.coreMaterial === 'water' ? "default" : "outline"} onClick={() => setL3(p => ({ ...p, coreMaterial: 'water' }))}><Translate>Water (n=1.33)</Translate></Button>
+                                            <Button disabled={levelComplete} variant={l3.coreMaterial === 'glass' ? "default" : "outline"} onClick={() => setL3(p => ({ ...p, coreMaterial: 'glass' }))}><Translate>Glass (n=1.5)</Translate></Button>
+                                            <Button disabled={levelComplete} variant={l3.coreMaterial === 'diamond' ? "default" : "outline"} onClick={() => setL3(p => ({ ...p, coreMaterial: 'diamond' }))}><Translate>Diamond (n=2.4)</Translate></Button>
+                                        </div>
                                     </div>
-                                </div>
-                                <div className="space-y-3">
-                                    <label className="text-xs font-bold text-slate-500 uppercase">Incident Angle</label>
-                                    <div className="flex gap-2">
-                                        {([30, 45, 60] as const).map(a => (
-                                            <Button key={a} disabled={levelComplete} variant={l3.incidentAngle === a ? "default" : "outline"} onClick={() => setL3(p => ({ ...p, incidentAngle: a }))} className="flex-1">{a}°</Button>
-                                        ))}
+                                    <div className="space-y-3 p-4 bg-white/60 rounded-xl border border-gray-100 shadow-sm">
+                                        <label className="text-xs font-bold text-gray-500 uppercase"><Translate>Incident Angle</Translate></label>
+                                        <div className="flex gap-2">
+                                            {([30, 45, 60] as const).map(a => (
+                                                <Button key={a} disabled={levelComplete} variant={l3.incidentAngle === a ? "default" : "outline"} onClick={() => setL3(p => ({ ...p, incidentAngle: a }))} className="flex-1">{a}°</Button>
+                                            ))}
+                                        </div>
                                     </div>
-                                </div>
-                            </>
-                        )}
-                    </div>
+                                </>
+                            )}
+                        </div>
 
-                    <div className="pt-6 border-t border-slate-800 space-y-4">
-                        <Button
-                            variant="outline"
-                            className="w-full h-10 text-sm font-medium text-slate-400 hover:text-white border-slate-700 hover:border-slate-600"
-                            onClick={handleSkipPuzzle}
-                        >
-                            Skip & Continue
-                            <ArrowRight className="w-4 h-4 ml-2" />
-                        </Button>
-
-                        <div>
+                        <div className="pt-6 border-t border-gray-200 space-y-4">
                             <Button
-                                className="w-full h-12 text-lg font-bold bg-green-600 hover:bg-green-500 shadow-lg shadow-green-900/20"
-                                onClick={handleLevelCheck}
-                                disabled={levelComplete}
+                                variant="outline"
+                                className="w-full h-10 text-sm font-medium text-gray-600 hover:text-gray-900 border-gray-300 hover:border-gray-400 hover:bg-gray-50 rounded-lg"
+                                onClick={handleSkipPuzzle}
                             >
-                                <Play className="w-5 h-5 mr-2 fill-current" />
-                                TEST CONFIGURATION
+                                <Translate>Skip & Continue</Translate>
+                                <ArrowRight className="w-4 h-4 ml-2" />
                             </Button>
-                            <p className="text-center text-[10px] text-slate-500 mt-2">
-                                Penalty applies for incorrect attempts.
-                            </p>
+
+                            <div>
+                                <Button
+                                    className="w-full h-12 text-lg font-bold bg-green-600 hover:bg-green-500 text-white shadow-lg glow-subtle rounded-lg"
+                                    onClick={handleLevelCheck}
+                                    disabled={levelComplete}
+                                >
+                                    <Play className="w-5 h-5 mr-2 fill-current" />
+                                    <Translate>TEST CONFIGURATION</Translate>
+                                </Button>
+                                <p className="text-center text-[10px] text-gray-500 mt-2">
+                                    <Translate>Penalty applies for incorrect attempts.</Translate>
+                                </p>
+                            </div>
                         </div>
                     </div>
                 </div>

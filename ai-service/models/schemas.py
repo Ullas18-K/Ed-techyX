@@ -19,12 +19,20 @@ class ScenarioRequest(BaseModel):
     student_id: str = Field(..., description="Unique student identifier")
     difficulty: Optional[str] = Field("medium", description="easy, medium, hard")
 
+class ConversationMode(str, Enum):
+    TASK_GUIDANCE = "task_guidance"
+    STATE_EXPLANATION = "state_explanation"
+
 class ConversationRequest(BaseModel):
     scenario_id: str
     current_task_id: int
     student_input: str
     context: Optional[Dict[str, Any]] = None
     session_history: Optional[List[str]] = []
+    # New fields for state explanation
+    mode: Optional[ConversationMode] = ConversationMode.TASK_GUIDANCE
+    subject: Optional[str] = "Science"
+    simulation_state: Optional[Dict[str, Any]] = None
 
 class QuizRequest(BaseModel):
     topic: str

@@ -209,21 +209,7 @@ export function LearningPlanScreen({ onStart }: LearningPlanScreenProps) {
               </div>
             </motion.div>
 
-            {/* Study with Others Button */}
-            <motion.div
-              variants={itemVariants}
-              className="flex-shrink-0 flex items-center"
-            >
-              <Button
-                variant="hero"
-                size="sm"
-                onClick={() => setIsStudyRoomModalOpen(true)}
-                className="gap-2 rounded-lg text-xs h-full min-w-36 px-4 py-2"
-              >
-                <Users className="w-4 h-4" />
-                <span><Translate>Study with Others</Translate></span>
-              </Button>
-            </motion.div>
+
           </div>
 
           {/* Row 4: Action Buttons */}

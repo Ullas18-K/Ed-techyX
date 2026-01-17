@@ -19,13 +19,13 @@ export class OpticsRenderer {
   private ctx: CanvasRenderingContext2D;
   private width: number;
   private height: number;
-  
+
   constructor(canvas: HTMLCanvasElement) {
     this.ctx = canvas.getContext('2d')!;
     this.width = canvas.width;
     this.height = canvas.height;
   }
-  
+
   /**
    * Clear the canvas
    */
@@ -34,7 +34,7 @@ export class OpticsRenderer {
     this.ctx.fillStyle = '#1a1a2e';
     this.ctx.fillRect(0, 0, this.width, this.height);
   }
-  
+
   /**
    * Draw the principal axis
    */
@@ -48,14 +48,14 @@ export class OpticsRenderer {
     this.ctx.stroke();
     this.ctx.setLineDash([]);
   }
-  
+
   /**
    * Draw grid for reference
    */
   drawGrid(): void {
     this.ctx.strokeStyle = '#ffffff10';
     this.ctx.lineWidth = 0.5;
-    
+
     // Vertical lines
     for (let x = 0; x < this.width; x += 50) {
       this.ctx.beginPath();
@@ -63,7 +63,7 @@ export class OpticsRenderer {
       this.ctx.lineTo(x, this.height);
       this.ctx.stroke();
     }
-    
+
     // Horizontal lines
     for (let y = 0; y < this.height; y += 50) {
       this.ctx.beginPath();
@@ -72,32 +72,32 @@ export class OpticsRenderer {
       this.ctx.stroke();
     }
   }
-  
+
   /**
    * Draw an optical object (candle, arrow, pencil)
    */
   drawObject(object: OpticalObject, highlight: boolean = false): void {
     const { position, height, width, type } = object;
-    
+
     this.ctx.save();
-    
+
     if (highlight) {
       this.ctx.shadowColor = '#00ff88';
       this.ctx.shadowBlur = 20;
     }
-    
+
     if (type === 'arrow') {
       // Draw arrow
       this.ctx.strokeStyle = '#00ff88';
       this.ctx.fillStyle = '#00ff88';
       this.ctx.lineWidth = 3;
-      
+
       // Shaft
       this.ctx.beginPath();
       this.ctx.moveTo(position.x, position.y);
       this.ctx.lineTo(position.x, position.y - height);
       this.ctx.stroke();
-      
+
       // Arrowhead
       this.ctx.beginPath();
       this.ctx.moveTo(position.x, position.y - height);
@@ -105,7 +105,7 @@ export class OpticsRenderer {
       this.ctx.lineTo(position.x + 10, position.y - height + 15);
       this.ctx.closePath();
       this.ctx.fill();
-      
+
     } else if (type === 'candle') {
       // Draw candle
       this.ctx.fillStyle = '#ffaa00';
@@ -115,7 +115,7 @@ export class OpticsRenderer {
         width,
         height * 0.7
       );
-      
+
       // Flame
       this.ctx.fillStyle = '#ff6b6b';
       this.ctx.beginPath();
@@ -129,7 +129,7 @@ export class OpticsRenderer {
         Math.PI * 2
       );
       this.ctx.fill();
-      
+
     } else if (type === 'pencil') {
       // Draw pencil
       this.ctx.fillStyle = '#ffd93d';
@@ -139,7 +139,7 @@ export class OpticsRenderer {
         width,
         height * 0.9
       );
-      
+
       // Tip
       this.ctx.fillStyle = '#333';
       this.ctx.beginPath();
@@ -149,84 +149,122 @@ export class OpticsRenderer {
       this.ctx.closePath();
       this.ctx.fill();
     }
-    
+
     this.ctx.restore();
   }
-  
+
   /**
    * Draw a lens
    */
   drawLens(lens: Lens, showLabels: boolean = true, showFocalPoints: boolean = true): void {
     const { position, diameter, type, focalLength } = lens;
-    
+
     this.ctx.save();
-    
+
     // Draw lens body
     this.ctx.strokeStyle = type === 'convex' ? '#4ecdc4' : '#ff6b6b';
     this.ctx.lineWidth = 4;
-    
+
     const halfDiameter = diameter / 2;
-    
+
     if (type === 'convex') {
-      // Convex lens (biconvex shape)
+      // Convex lens (biconvex shape) ()
       this.ctx.beginPath();
-      
-      // Left curve
+
+      // Left curve (drawn by right arc of circle on left)
       this.ctx.arc(
         position.x - 20,
         position.y,
         halfDiameter,
-        -Math.PI / 2,
-        Math.PI / 2
+        -Math.PI / 2, // Top
+        Math.PI / 2,  // Bottom
+        false // Clockwise -> right side of circle
       );
-      
-      // Right curve
+
+      // Right curve (drawn by left arc of circle on right)
+      this.ctx.arc(
+        position.x + 20,
+        position.y,
+        halfDiameter,
+        Math.PI / 2, // Bottom
+        -Math.PI / 2, // Top
+        false // Clockwise -> left side of circle? No.
+        // wait, let's stick to standard arc drawing
+        // Circle (x+20, y). 
+        // We want left side '('. This is PI/2 to 3PI/2 (or -PI/2).
+        // Standard arc: 0 is East. PI/2 South. PI West. -PI/2 North.
+        // Want '(': From South (PI/2) to North (-PI/2) going Clockwise?
+        // PI/2 -> 0 -> -PI/2. That's the Right side ')'.
+        // So clockwise PI/2 to -PI/2 is ')'.
+        // We want '('. That is PI/2 to -PI/2 COUNTER-clockwise.
+      );
+      // Let's rewrite using simple known valid paths
+
+      // Convex Lens: ()
+      this.ctx.beginPath();
+
+      // Left surface (Right arc of a circle to the left)
+      // Center: x-20. Arc: -PI/2 to PI/2.
+      this.ctx.arc(position.x - 40, position.y, Math.sqrt(40 * 40 + halfDiameter * halfDiameter), Math.asin(halfDiameter / Math.sqrt(40 * 40 + halfDiameter * halfDiameter)) * -1, Math.asin(halfDiameter / Math.sqrt(40 * 40 + halfDiameter * halfDiameter)));
+
+      // Actually, relying on previous logic but SWAPPED is likely safer if previous logic just produced the wrong one.
+      // Previous 'convex' produced ')(', previous 'else' produced '()'.
+      // So I will just put the code from 'else' block into 'convex', and vice versa.
+
+      // Code that WAS in 'else' (produced ())
+      this.ctx.beginPath();
       this.ctx.arc(
         position.x + 20,
         position.y,
         halfDiameter,
         Math.PI / 2,
-        -Math.PI / 2
+        -Math.PI / 2,
+        true // Anticlockwise
       );
-      
+      this.ctx.arc(
+        position.x - 20,
+        position.y,
+        halfDiameter,
+        -Math.PI / 2,
+        Math.PI / 2,
+        true // Anticlockwise
+      );
       this.ctx.closePath();
       this.ctx.stroke();
-      
-      // Fill with slight transparency
       this.ctx.fillStyle = '#4ecdc420';
       this.ctx.fill();
-      
+
     } else {
-      // Concave lens (biconcave shape)
+      // Concave lens (biconcave shape) )( 
+      // Code that WAS in 'convex' (produced )()
       this.ctx.beginPath();
-      
-      // Left curve (inverted)
-      this.ctx.arc(
-        position.x + 20,
-        position.y,
-        halfDiameter,
-        Math.PI / 2,
-        -Math.PI / 2,
-        true
-      );
-      
-      // Right curve (inverted)
+
+      // Left curve )
       this.ctx.arc(
         position.x - 20,
         position.y,
         halfDiameter,
         -Math.PI / 2,
         Math.PI / 2,
-        true
+        false
       );
-      
+
+      // Right curve (
+      this.ctx.arc(
+        position.x + 20,
+        position.y,
+        halfDiameter,
+        Math.PI / 2,
+        -Math.PI / 2,
+        false
+      );
+
       this.ctx.closePath();
       this.ctx.stroke();
-      
       this.ctx.fillStyle = '#ff6b6b20';
       this.ctx.fill();
     }
-    
+
     // Draw center line
     this.ctx.strokeStyle = '#ffffff80';
     this.ctx.lineWidth = 2;
@@ -234,12 +272,12 @@ export class OpticsRenderer {
     this.ctx.moveTo(position.x, position.y - halfDiameter);
     this.ctx.lineTo(position.x, position.y + halfDiameter);
     this.ctx.stroke();
-    
+
     // Draw focal points
     if (showFocalPoints) {
       const focalRadius = 5;
       this.ctx.fillStyle = '#ffd93d';
-      
+
       // Near focal point (F)
       this.ctx.beginPath();
       this.ctx.arc(
@@ -250,7 +288,7 @@ export class OpticsRenderer {
         Math.PI * 2
       );
       this.ctx.fill();
-      
+
       // Far focal point (F')
       this.ctx.beginPath();
       this.ctx.arc(
@@ -261,33 +299,33 @@ export class OpticsRenderer {
         Math.PI * 2
       );
       this.ctx.fill();
-      
+
       if (showLabels) {
         this.ctx.fillStyle = '#ffffff';
         this.ctx.font = '14px Arial';
         this.ctx.fillText('F', position.x - Math.abs(focalLength) - 5, PRINCIPAL_AXIS_Y - 10);
         this.ctx.fillText("F'", position.x + Math.abs(focalLength) - 5, PRINCIPAL_AXIS_Y - 10);
-        
+
         // 2F points
         this.ctx.fillStyle = '#ffffff80';
         this.ctx.fillText('2F', position.x - Math.abs(focalLength) * 2 - 5, PRINCIPAL_AXIS_Y - 10);
         this.ctx.fillText("2F'", position.x + Math.abs(focalLength) * 2 - 5, PRINCIPAL_AXIS_Y - 10);
       }
     }
-    
+
     this.ctx.restore();
   }
-  
+
   /**
    * Draw a mirror
    */
   drawMirror(mirror: Mirror, showLabels: boolean = true, showFocalPoints: boolean = true): void {
     const { position, diameter, type, focalLength } = mirror;
-    
+
     this.ctx.save();
-    
+
     const halfDiameter = diameter / 2;
-    
+
     if (type === 'plane') {
       // Plane mirror (straight line)
       this.ctx.strokeStyle = '#95e1d3';
@@ -296,7 +334,7 @@ export class OpticsRenderer {
       this.ctx.moveTo(position.x, position.y - halfDiameter);
       this.ctx.lineTo(position.x, position.y + halfDiameter);
       this.ctx.stroke();
-      
+
       // Reflective surface indicator (hatching on left side)
       this.ctx.strokeStyle = '#95e1d340';
       this.ctx.lineWidth = 2;
@@ -307,91 +345,129 @@ export class OpticsRenderer {
         this.ctx.lineTo(position.x - 15, y + 10);
         this.ctx.stroke();
       }
-      
+
     } else {
       // Curved mirror
       this.ctx.strokeStyle = type === 'concave' ? '#4ecdc4' : '#ff6b6b';
       this.ctx.lineWidth = 6;
-      
+
       const radius = Math.abs(mirror.radiusOfCurvature);
-      const centerX = position.x + (type === 'concave' ? radius : -radius);
-      
+
+      // Concave Mirror: Shape ')' (centered left). Light from Left hits inside.
+      // Convex Mirror: Shape '(' (centered right). Light from Left hits outside.
+      const centerX = position.x + (type === 'concave' ? -radius : radius);
+
       // Calculate start and end angles for the arc
       const angle = Math.asin(halfDiameter / radius);
-      
+
       this.ctx.beginPath();
       if (type === 'concave') {
-        this.ctx.arc(centerX, position.y, radius, Math.PI - angle, Math.PI + angle);
-      } else {
+        // Concave: Center Left. Arc is Right side (around 0).
         this.ctx.arc(centerX, position.y, radius, -angle, angle);
+      } else {
+        // Convex: Center Right. Arc is Left side (around PI).
+        this.ctx.arc(centerX, position.y, radius, Math.PI - angle, Math.PI + angle);
       }
       this.ctx.stroke();
-      
-      // Reflective surface indicator
+
+      // Reflective surface indicator (hatching on non-reflective side)
       this.ctx.strokeStyle = this.ctx.strokeStyle + '40';
       this.ctx.lineWidth = 2;
-      
+
       for (let i = 0; i < 8; i++) {
         const fraction = (i / 8) * 2 - 1;
         const y = position.y + halfDiameter * fraction;
-        const x = position.x + (type === 'concave' ? -10 : 10);
+
+        // Find x on the curve
+        // Circle: (x-cx)^2 + (y-cy)^2 = R^2
+        // x = cx +/- sqrt(R^2 - dy^2)
+        const dy = y - position.y;
+        const dx = Math.sqrt(radius * radius - dy * dy);
+
+        let curveX;
+        if (type === 'concave') {
+          // Concave ')' : Center Left. Curve is Right of Center. x = cx + dx
+          curveX = centerX + dx;
+        } else {
+          // Convex '(' : Center Right. Curve is Left of Center. x = cx - dx
+          curveX = centerX - dx;
+        }
+
         this.ctx.beginPath();
-        this.ctx.moveTo(position.x, y);
-        this.ctx.lineTo(x, y + (type === 'concave' ? 10 : -10));
+        this.ctx.moveTo(curveX, y);
+        this.ctx.lineTo(curveX + 10, y + 10);
         this.ctx.stroke();
       }
     }
-    
+
     // Draw focal point
     if (showFocalPoints && type !== 'plane') {
       const focalRadius = 5;
       this.ctx.fillStyle = '#ffd93d';
-      
+
+      // Concave: Focus Left (Real). Center Left.
+      // Convex: Focus Right (Virtual). Center Right.
+      // Wait. If Concave Center is Left, Focus is Left. R is Left.
+      // F = R/2. 
+      const f = Math.abs(focalLength);
+      // For Concave, f is negative in store? Or just type='concave'?
+      // Assuming 'f' variable here is just magnitude from element.
+      // Position is pole.
+      // Concave (F Left): x - f.
+      // Convex (F Right): x + f.
+
+      const focusX = position.x + (type === 'concave' ? -f : f);
+      // Center C is at radius distance.
+      // Concave ')' center is Left: x - R.
+      // Convex '(' center is Right: x + R.
+      const r_abs = Math.abs(mirror.radiusOfCurvature);
+      const centerX = position.x + (type === 'concave' ? -r_abs : r_abs);
+
+      // Draw Focus F
       this.ctx.beginPath();
-      this.ctx.arc(
-        position.x - Math.abs(focalLength),
-        PRINCIPAL_AXIS_Y,
-        focalRadius,
-        0,
-        Math.PI * 2
-      );
+      this.ctx.arc(focusX, PRINCIPAL_AXIS_Y, focalRadius, 0, Math.PI * 2);
       this.ctx.fill();
-      
+
+      // Draw Center C
+      // this.ctx.beginPath();
+      // this.ctx.arc(centerX, PRINCIPAL_AXIS_Y, 3, 0, Math.PI * 2);
+      // this.ctx.fill();
+
       if (showLabels) {
         this.ctx.fillStyle = '#ffffff';
         this.ctx.font = '14px Arial';
-        this.ctx.fillText('F', position.x - Math.abs(focalLength) - 5, PRINCIPAL_AXIS_Y - 10);
-        this.ctx.fillText('C', position.x - Math.abs(mirror.radiusOfCurvature) - 5, PRINCIPAL_AXIS_Y - 10);
+        this.ctx.fillText('F', focusX - 5, PRINCIPAL_AXIS_Y - 10);
+        this.ctx.fillText('C', centerX - 5, PRINCIPAL_AXIS_Y - 10);
       }
     }
-    
+
     this.ctx.restore();
   }
-  
+
   /**
    * Draw a ray
    */
   drawRay(ray: Ray, maxLength: number = 1000): void {
     this.ctx.save();
-    
+
     this.ctx.strokeStyle = ray.color;
     this.ctx.lineWidth = 2;
     this.ctx.globalAlpha = ray.intensity;
-    
+
     const endPoint = {
       x: ray.origin.x + ray.direction.x * maxLength,
       y: ray.origin.y + ray.direction.y * maxLength,
     };
-    
+
     this.ctx.beginPath();
     this.ctx.moveTo(ray.origin.x, ray.origin.y);
     this.ctx.lineTo(endPoint.x, endPoint.y);
     this.ctx.stroke();
-    
+
     // Draw arrowhead
     const arrowSize = 8;
     const angle = Math.atan2(ray.direction.y, ray.direction.x);
-    
+
     this.ctx.fillStyle = ray.color;
     this.ctx.beginPath();
     this.ctx.moveTo(
@@ -408,38 +484,38 @@ export class OpticsRenderer {
     );
     this.ctx.closePath();
     this.ctx.fill();
-    
+
     this.ctx.restore();
   }
-  
+
   /**
    * Draw the formed image
    */
   drawImage(image: ImageData, showVirtual: boolean = true): void {
     if (!image.isReal && !showVirtual) return;
-    
+
     this.ctx.save();
-    
+
     // Virtual images are drawn with dashed lines
     if (!image.isReal) {
       this.ctx.setLineDash([5, 5]);
       this.ctx.globalAlpha = 0.6;
     }
-    
+
     this.ctx.strokeStyle = image.isReal ? '#00ff88' : '#ff00ff';
     this.ctx.fillStyle = image.isReal ? '#00ff8840' : '#ff00ff40';
     this.ctx.lineWidth = 3;
-    
+
     const imageTop = image.isInverted
       ? image.position.y + image.height
       : image.position.y - image.height;
-    
+
     // Draw image arrow
     this.ctx.beginPath();
     this.ctx.moveTo(image.position.x, image.position.y);
     this.ctx.lineTo(image.position.x, imageTop);
     this.ctx.stroke();
-    
+
     // Arrowhead
     this.ctx.beginPath();
     this.ctx.moveTo(image.position.x, imageTop);
@@ -447,7 +523,7 @@ export class OpticsRenderer {
     this.ctx.lineTo(image.position.x + 10, imageTop + (image.isInverted ? -15 : 15));
     this.ctx.closePath();
     this.ctx.fill();
-    
+
     // Label
     this.ctx.fillStyle = '#ffffff';
     this.ctx.font = '12px Arial';
@@ -461,10 +537,10 @@ export class OpticsRenderer {
       image.position.x + 10,
       imageTop + 15
     );
-    
+
     this.ctx.restore();
   }
-  
+
   /**
    * Render complete scene
    */
@@ -485,7 +561,7 @@ export class OpticsRenderer {
     this.clear();
     this.drawGrid();
     this.drawPrincipalAxis();
-    
+
     // Draw optical elements
     elements.forEach((element) => {
       if ('refractiveIndex' in element) {
@@ -494,38 +570,38 @@ export class OpticsRenderer {
         this.drawMirror(element, options.showLabels, options.showFocalPoints);
       }
     });
-    
+
     // Draw rays
     if (options.showRays) {
       rays.forEach((ray) => this.drawRay(ray));
     }
-    
+
     // Draw object
     this.drawObject(object, options.highlightObject);
-    
+
     // Draw image
     if (image) {
       this.drawImage(image, options.showVirtualImage);
     }
-    
+
     // Draw measurements
     if (options.showMeasurements && elements.length > 0) {
       this.drawMeasurements(object, elements[0], image);
     }
   }
-  
+
   /**
    * Draw measurement annotations (distances, angles, labels)
    */
   private drawMeasurements(object: OpticalObject, element: OpticalElement, image: ImageData | null): void {
     const PIXELS_TO_CM = 10; // 10 pixels = 1 cm
-    
+
     this.ctx.save();
     this.ctx.font = '12px monospace';
     this.ctx.strokeStyle = '#fbbf24';
     this.ctx.fillStyle = '#fbbf24';
     this.ctx.lineWidth = 1.5;
-    
+
     // Object distance measurement
     const objectDist = Math.abs(element.position.x - object.position.x);
     this.drawDistanceLine(
@@ -535,7 +611,7 @@ export class OpticsRenderer {
       PRINCIPAL_AXIS_Y + 30,
       `u = ${(objectDist / PIXELS_TO_CM).toFixed(1)} cm`
     );
-    
+
     // Image distance measurement
     if (image) {
       const imageDist = Math.abs(image.position.x - element.position.x);
@@ -547,22 +623,22 @@ export class OpticsRenderer {
         `v = ${(imageDist / PIXELS_TO_CM).toFixed(1)} cm`
       );
     }
-    
+
     // Focal length markers
     const focalDist = Math.abs(element.focalLength);
-    
+
     // Left focal point
     this.ctx.beginPath();
     this.ctx.arc(element.position.x - focalDist, PRINCIPAL_AXIS_Y, 6, 0, Math.PI * 2);
     this.ctx.fill();
     this.ctx.fillText('F', element.position.x - focalDist + 10, PRINCIPAL_AXIS_Y - 10);
-    
+
     // Right focal point
     this.ctx.beginPath();
     this.ctx.arc(element.position.x + focalDist, PRINCIPAL_AXIS_Y, 6, 0, Math.PI * 2);
     this.ctx.fill();
     this.ctx.fillText("F'", element.position.x + focalDist + 10, PRINCIPAL_AXIS_Y - 10);
-    
+
     // Focal length measurement
     this.drawDistanceLine(
       element.position.x,
@@ -571,27 +647,27 @@ export class OpticsRenderer {
       PRINCIPAL_AXIS_Y - 30,
       `f = ${(focalDist / PIXELS_TO_CM).toFixed(1)} cm`
     );
-    
+
     // Angle of incidence (calculated from object position relative to principal axis)
     if (object.height !== 0) {
       const angleRad = Math.atan2(object.height, objectDist);
       const angleDeg = Math.abs(angleRad * (180 / Math.PI));
-      
+
       // Draw angle arc
       this.ctx.beginPath();
       this.ctx.arc(element.position.x, PRINCIPAL_AXIS_Y, 40, Math.PI, Math.PI - angleRad, angleRad > 0);
       this.ctx.stroke();
-      
+
       this.ctx.fillText(
         `θ = ${angleDeg.toFixed(1)}°`,
         element.position.x - 70,
         PRINCIPAL_AXIS_Y - 45
       );
     }
-    
+
     this.ctx.restore();
   }
-  
+
   /**
    * Draw a distance measurement line with label
    */
@@ -601,7 +677,7 @@ export class OpticsRenderer {
     this.ctx.moveTo(x1, y1);
     this.ctx.lineTo(x2, y2);
     this.ctx.stroke();
-    
+
     // End caps
     const capHeight = 8;
     this.ctx.beginPath();
@@ -610,16 +686,16 @@ export class OpticsRenderer {
     this.ctx.moveTo(x2, y2 - capHeight);
     this.ctx.lineTo(x2, y2 + capHeight);
     this.ctx.stroke();
-    
+
     // Label (centered)
     const midX = (x1 + x2) / 2;
     const midY = y1 - 5;
     const textMetrics = this.ctx.measureText(label);
-    
+
     // Background for label
     this.ctx.fillStyle = '#1a1a2e';
     this.ctx.fillRect(midX - textMetrics.width / 2 - 3, midY - 12, textMetrics.width + 6, 16);
-    
+
     // Label text
     this.ctx.fillStyle = '#fbbf24';
     this.ctx.fillText(label, midX - textMetrics.width / 2, midY);

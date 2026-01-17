@@ -7,7 +7,9 @@ import {
     ArrowLeft,
     ChevronUp,
     ChevronDown,
-    Sparkles
+    Sparkles,
+    X,
+    Loader2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { TaskSidebar, TaskItem } from './TaskSidebar';
@@ -40,6 +42,12 @@ interface UnifiedSimulationLayoutProps {
     showDataLogger?: boolean;
     onToggleDataLogger?: () => void;
     dataLoggerContent?: React.ReactNode;
+
+    // AI State Explanation
+    onExplainState?: () => void;
+    penmanTextOverride?: string | null;
+    onClearExplanation?: () => void;
+    isThinking?: boolean;
 }
 
 export const UnifiedSimulationLayout: React.FC<UnifiedSimulationLayoutProps> = ({
@@ -56,7 +64,11 @@ export const UnifiedSimulationLayout: React.FC<UnifiedSimulationLayoutProps> = (
     controls,
     showDataLogger = false,
     onToggleDataLogger,
-    dataLoggerContent
+    dataLoggerContent,
+    onExplainState,
+    penmanTextOverride,
+    onClearExplanation,
+    isThinking = false
 }) => {
     const [isAssistanceEnabled, setIsAssistanceEnabled] = useState(true);
 
@@ -67,7 +79,7 @@ export const UnifiedSimulationLayout: React.FC<UnifiedSimulationLayoutProps> = (
         <div className="flex flex-col h-screen overflow-hidden bg-white text-black relative font-sans">
 
             {/* 1. Universal Header */}
-            <header className="h-14 border-b border-gray-200 bg-white flex items-center justify-between px-4 shrink-0 z-40">
+            <header className="h-14 border-b border-gray-200 bg-white flex items-center justify-between px-4 shrink-0 z-40 rounded-b-2xl shadow-sm">
                 <div className="flex items-center gap-4">
                     <Button
                         variant="ghost"
@@ -103,6 +115,25 @@ export const UnifiedSimulationLayout: React.FC<UnifiedSimulationLayoutProps> = (
 
                     <div className="w-px h-4 bg-gray-300 mx-1" />
 
+                    {onExplainState && (
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={onExplainState}
+                            disabled={isThinking}
+                            className="gap-2 h-8 text-xs font-semibold tracking-wide border-primary/20 hover:bg-primary/5 text-primary"
+                        >
+                            {isThinking ? (
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            ) : (
+                                <Sparkles className="w-3.5 h-3.5" />
+                            )}
+                            <Translate>{isThinking ? "Thinking..." : "Explain State"}</Translate>
+                        </Button>
+                    )}
+
+                    <div className="w-px h-4 bg-gray-300 mx-1" />
+
                     {onToggleDataLogger && (
                         <Button
                             variant={showDataLogger ? "secondary" : "ghost"}
@@ -134,7 +165,7 @@ export const UnifiedSimulationLayout: React.FC<UnifiedSimulationLayoutProps> = (
                 <div className="flex-1 flex flex-col relative min-w-0">
 
                     {/* A. Canvas Area */}
-                    <div className="flex-1 relative bg-gray-50 overflow-hidden select-none">
+                    <div className="flex-1 relative bg-gray-50 overflow-hidden select-none rounded-2xl m-4 shadow-sm">
                         {/* The Simulation Canvas */}
                         <div className="absolute inset-0 flex items-center justify-center">
                             {children}
@@ -172,7 +203,7 @@ export const UnifiedSimulationLayout: React.FC<UnifiedSimulationLayoutProps> = (
                     </div>
 
                     {/* Bottom: Data Logger (Takes remaining space) */}
-                    <div className="flex-1 flex flex-col bg-gray-50 min-h-0">
+                    <div className="flex-1 flex flex-col bg-gray-50 min-h-0 rounded-tl-2xl overflow-hidden">
                         <div className="h-10 flex items-center px-4 border-b border-gray-200 bg-gray-100 shrink-0">
                             <span className="text-[10px] font-bold text-primary uppercase tracking-[0.2em] flex items-center gap-2">
                                 <Database className="w-3 h-3" /> <Translate>Data Logger</Translate>
@@ -192,6 +223,66 @@ export const UnifiedSimulationLayout: React.FC<UnifiedSimulationLayoutProps> = (
 
             {/* 3. Penman Overlay (Global - Top Layer) */}
             {/* Placed at root to ensure it floats above everything else */}
+
+            <AnimatePresence>
+                {penmanTextOverride && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm"
+                    >
+                        <motion.div
+                            initial={{ scale: 0.9, y: 20 }}
+                            animate={{ scale: 1, y: 0 }}
+                            exit={{ scale: 0.9, y: 20 }}
+                            className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full overflow-hidden relative"
+                        >
+                            <div className="absolute top-4 right-4">
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={onClearExplanation}
+                                    className="rounded-full hover:bg-gray-100"
+                                >
+                                    <X className="w-5 h-5 text-gray-400" />
+                                </Button>
+                            </div>
+
+                            <div className="p-8 pb-10">
+                                <div className="flex items-center gap-4 mb-6">
+                                    <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center">
+                                        <Sparkles className="w-6 h-6 text-primary" />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-xl font-bold text-gray-900">
+                                            <Translate>Simulation Insight</Translate>
+                                        </h3>
+                                        <p className="text-sm text-gray-500 font-medium tracking-wide uppercase">
+                                            <Translate>Powered by Penman AI</Translate>
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="bg-gray-50 rounded-2xl p-6 border border-gray-100">
+                                    <p className="text-gray-700 leading-relaxed text-lg italic">
+                                        "{penmanTextOverride}"
+                                    </p>
+                                </div>
+
+                                <div className="mt-8 flex justify-center">
+                                    <Button
+                                        onClick={onClearExplanation}
+                                        className="rounded-full px-8 h-12 font-bold text-base shadow-lg shadow-primary/20"
+                                    >
+                                        <Translate>Got it, thanks!</Translate>
+                                    </Button>
+                                </div>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 };

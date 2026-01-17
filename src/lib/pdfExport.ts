@@ -74,3 +74,170 @@ export const exportLeaderboardToPDF = (
     const fileName = `Leaderboard_${roomId}_${new Date().getTime()}.pdf`;
     doc.save(fileName);
 };
+
+export const exportStudyMaterialToPDF = (
+    data: {
+        title: string;
+        subject: string;
+        gradeLevel: number | string;
+        scenarioDescription: string;
+        keyConcepts: { description: string; details: string }[];
+        notes?: string | string[];
+        formulas?: string[];
+        derivations?: string | string[];
+        pyqs?: {
+            questionText: string;
+            answer?: string;
+            answerExplanation?: string;
+            year?: number;
+            source?: string;
+        }[];
+    }
+) => {
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    let currentY = 20;
+
+    // Helper to add a header
+    const addSectionHeader = (text: string) => {
+        if (currentY > 250) {
+            doc.addPage();
+            currentY = 20;
+        }
+        doc.setFontSize(14);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(59, 130, 246); // Blue primary color
+        doc.text(text, 20, currentY);
+        currentY += 10;
+        doc.setTextColor(0, 0, 0); // Reset to black
+    };
+
+    // Helper to add wrapped text
+    const addText = (text: string, fontSize = 11, fontStyle = 'normal') => {
+        doc.setFont('helvetica', fontStyle);
+        doc.setFontSize(fontSize);
+        const lines = doc.splitTextToSize(text, pageWidth - 40);
+
+        if (currentY + (lines.length * (fontSize / 2)) > 280) {
+            doc.addPage();
+            currentY = 20;
+        }
+
+        doc.text(lines, 20, currentY);
+        currentY += (lines.length * (fontSize / 2)) + 5;
+    };
+
+    // Cover Section
+    doc.setFillColor(59, 130, 246);
+    doc.rect(0, 0, pageWidth, 40, 'F');
+    doc.setFontSize(22);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(255, 255, 255);
+    doc.text(data.title, pageWidth / 2, 25, { align: 'center' });
+
+    currentY = 55;
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Subject: ${data.subject}`, 20, currentY);
+    doc.text(`Level: Class ${data.gradeLevel}`, pageWidth - 20, currentY, { align: 'right' });
+    currentY += 15;
+
+    // 1. Overview
+    addSectionHeader('Topic Overview');
+    addText(data.scenarioDescription);
+
+    // 2. Key Concepts
+    addSectionHeader('Key Concepts');
+    const conceptData = data.keyConcepts.map((c, i) => [i + 1, c.description, c.details]);
+    autoTable(doc, {
+        startY: currentY,
+        head: [['#', 'Concept', 'Details']],
+        body: conceptData,
+        theme: 'striped',
+        headStyles: { fillColor: [59, 130, 246], fontStyle: 'bold' },
+        margin: { left: 20, right: 20 },
+        styles: { fontSize: 10, cellPadding: 3 },
+        columnStyles: { 0: { cellWidth: 10 }, 1: { cellWidth: 50 } },
+        didDrawPage: (d) => { currentY = d.cursor ? d.cursor.y + 15 : currentY; }
+    });
+
+    // 3. Notes
+    if (data.notes) {
+        addSectionHeader('Comprehensive Notes');
+        const notesText = Array.isArray(data.notes)
+            ? data.notes.join('\n')
+            : data.notes;
+        addText(notesText.replace(/\\n/g, '\n'));
+    }
+
+    // 4. Formulas & Derivations
+    if ((data.formulas && data.formulas.length > 0) || data.derivations) {
+        addSectionHeader('Formulas & Derivations');
+        if (data.formulas && data.formulas.length > 0) {
+            data.formulas.forEach(f => {
+                addText(`• ${f}`, 11, 'normal');
+            });
+        }
+        if (data.derivations) {
+            const derivationText = Array.isArray(data.derivations)
+                ? data.derivations.join('\n')
+                : data.derivations;
+            addText(derivationText.replace(/\\n/g, '\n'));
+        }
+    }
+
+    // 5. Practice Questions (PYQs)
+    if (data.pyqs && data.pyqs.length > 0) {
+        doc.addPage();
+        currentY = 20;
+        addSectionHeader('Practice Questions (PYQs & AI Generated)');
+
+        data.pyqs.forEach((q, i) => {
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(12);
+            const qHeader = `Q${i + 1}: ${q.year ? `(${q.year})` : ''} ${q.source === 'pyq' ? '[PYQ]' : '[AI]'}`;
+            doc.text(qHeader, 20, currentY);
+            currentY += 8;
+
+            addText(q.questionText, 11, 'italic');
+
+            if (q.answer) {
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(10);
+                doc.text('Correct Answer:', 20, currentY);
+                currentY += 5;
+                addText(q.answer, 10);
+            }
+
+            if (q.answerExplanation) {
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(10);
+                doc.text('Explanation:', 20, currentY);
+                currentY += 5;
+                addText(q.answerExplanation, 10);
+            }
+
+            currentY += 5;
+            doc.setDrawColor(200, 200, 200);
+            doc.line(20, currentY, pageWidth - 20, currentY);
+            currentY += 10;
+        });
+    }
+
+    // Footer
+    const pageCount = doc.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'italic');
+        doc.setTextColor(150, 150, 150);
+        doc.text(`Generated by EdTech Learning Forge • Page ${i} of ${pageCount}`, pageWidth / 2, doc.internal.pageSize.height - 10, { align: 'center' });
+    }
+
+    // Save
+    const fileName = `${data.title.replace(/\s+/g, '_')}_Study_Material.pdf`;
+    doc.save(fileName);
+};
+
+

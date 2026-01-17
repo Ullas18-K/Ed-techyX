@@ -9,7 +9,12 @@ from google.oauth2 import service_account
 
 from config.settings import settings
 from models.schemas import ConversationRequest, ConversationResponse, RAGSource
-from prompts.templates import get_conversation_prompt, get_boundary_check_prompt, get_enhanced_conversation_prompt
+from prompts.templates import (
+    get_conversation_prompt, 
+    get_boundary_check_prompt, 
+    get_enhanced_conversation_prompt,
+    get_state_explanation_prompt
+)
 
 logger = logging.getLogger(__name__)
 
@@ -72,6 +77,10 @@ class ConversationGuide:
             ConversationResponse with answer, sources, and suggestions
         """
         try:
+            # Handle state explanation mode
+            if request.mode == "state_explanation":
+                return await self._handle_state_explanation(request)
+
             logger.info(f"📝 Processing question: '{request.student_input[:50]}...'")
             
             # Extract context from request (not from stored memory)
@@ -326,14 +335,10 @@ Grade {grade} Indian curriculum. Ensure accuracy and educational value.
         if not simulation_state:
             return "No simulation data available."
         
-        formatted = []
-        for key, value in simulation_state.items():
-            if isinstance(value, (int, float)):
-                formatted.append(f"- {key.replace('_', ' ').title()}: {value}")
-            elif isinstance(value, str):
-                formatted.append(f"- {key.replace('_', ' ').title()}: {value}")
-        
-        return "\n".join(formatted) if formatted else "No simulation data available."
+        try:
+            return json.dumps(simulation_state, indent=2)
+        except Exception:
+            return str(simulation_state)
     
     async def _generate_response(self, prompt: str) -> str:
         """
@@ -511,6 +516,67 @@ Make them specific to {topic} and encourage exploration.
             confidence=0.9
         )
     
+    async def _handle_state_explanation(self, request: ConversationRequest) -> ConversationResponse:
+        """
+        Handle request to explain the current simulation state.
+        
+        Args:
+            request: ConversationRequest with mode='state_explanation'
+            
+        Returns:
+            ConversationResponse with raw text explanation
+        """
+        try:
+            context = request.context or {}
+            topic = context.get("topic", "Science Topic")
+            subject = request.subject or "Science"
+            simulation_state = request.simulation_state or {}
+            
+            logger.info(f"🔬 Explaining state for topic: {topic}")
+            
+            if not self.model:
+                logger.error("❌ Gemini model not initialized")
+                return self._fallback_response()
+            
+            # Format state data for prompt
+            state_text = self._format_simulation_state(simulation_state)
+            
+            # Build prompt
+            prompt = get_state_explanation_prompt(
+                subject=subject,
+                topic=topic,
+                state=state_text
+            )
+            
+            # Generate response (high token limit for thorough explanation)
+            generation_config = {
+                "temperature": 0.4, # Lower temperature for precision
+                "max_output_tokens": 8192, # Increased to prevent cutoff
+            }
+            
+            response = self.model.generate_content(
+                prompt,
+                generation_config=generation_config
+            )
+            
+            if hasattr(response, 'text'):
+                response_text = response.text.strip() # type: ignore
+            else:
+                response_text = str(response).strip()
+            
+            # Build response (Raw Text pass-through for reliability)
+            return ConversationResponse(
+                response=response_text,
+                action="explain_state",
+                task_complete=False,
+                rag_used=False,
+                confidence=1.0 # State explanation is deterministic from model perspective
+            )
+            
+        except Exception as e:
+            logger.error(f"❌ Error in state explanation: {e}")
+            return self._fallback_response()
+
     def _fallback_response(self) -> ConversationResponse:
         """
         Minimal fallback response when system fails.
