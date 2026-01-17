@@ -1,24 +1,39 @@
 import { motion } from 'framer-motion';
 import { Sparkles, Brain, Lightbulb, Microscope, Atom } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { Translate } from '@/components/Translate';
+import { useTranslationStore } from '@/lib/translationStore';
 
 export function HeroSection() {
+  const { currentLanguage, translate } = useTranslationStore();
+  const [targetText, setTargetText] = useState('Learn by Doing.');
   const [displayedText, setDisplayedText] = useState('');
-  const fullText = 'Learn by Doing.';
-  
+
+  useEffect(() => {
+    const initTranslate = async () => {
+      if (currentLanguage !== 'en') {
+        const result = await translate("Learn by Doing.");
+        setTargetText(result as string);
+      } else {
+        setTargetText("Learn by Doing.");
+      }
+    };
+    initTranslate();
+  }, [currentLanguage, translate]);
+
   useEffect(() => {
     let index = 0;
     const timer = setInterval(() => {
-      if (index < fullText.length) {
-        setDisplayedText(fullText.slice(0, index + 1));
+      if (index < targetText.length) {
+        setDisplayedText(targetText.slice(0, index + 1));
         index++;
       } else {
         clearInterval(timer);
       }
     }, 50); // Typing speed: 50ms per character
-    
+
     return () => clearInterval(timer);
-  }, []);
+  }, [targetText]);
 
   const floatingIcons = [
     // Far corners - spread far from text
@@ -44,7 +59,7 @@ export function HeroSection() {
       >
         <div className="relative">
           <Sparkles className="w-4 h-4 text-primary" />
-          <motion.div 
+          <motion.div
             className="absolute inset-0"
             animate={{ scale: [1, 1.5, 1], opacity: [1, 0, 1] }}
             transition={{ duration: 2, repeat: Infinity, repeatDelay: 0 }}
@@ -53,7 +68,7 @@ export function HeroSection() {
             <Sparkles className="w-4 h-4 text-primary/50" />
           </motion.div>
         </div>
-        <span className="text-sm font-semibold text-foreground">AI-Powered Learning</span>
+        <span className="text-sm font-semibold text-foreground"><Translate>AI-Powered Learning</Translate></span>
       </motion.div>
 
       {/* Main heading */}
@@ -65,14 +80,14 @@ export function HeroSection() {
         layout={false}
         style={{ willChange: 'opacity, transform' }}
       >
-        <span className="text-foreground">Ask Anything.</span>
+        <span className="text-foreground"><Translate>Ask Anything.</Translate></span>
         <br />
         <span className="inline-block">
           <span className="text-gradient bg-gradient-to-r from-primary via-accent to-primary bg-[length:200%_auto] animate-shimmer">
             {displayedText}
           </span>
-          {displayedText.length < fullText.length && (
-            <motion.span 
+          {displayedText.length < targetText.length && (
+            <motion.span
               className="inline-block w-1 h-8 md:h-12 lg:h-16 ml-1 bg-primary rounded-sm"
               animate={{ opacity: [1, 0] }}
               transition={{ duration: 0.7, repeat: Infinity }}
@@ -90,7 +105,7 @@ export function HeroSection() {
         layout={false}
         style={{ willChange: 'opacity, transform' }}
       >
-        Textbooks → AI-Generated Simulations → True Understanding
+        <Translate>Textbooks → AI-Generated Simulations → True Understanding</Translate>
       </motion.p>
 
       {/* Learning path visualization with glass cards */}
@@ -111,20 +126,19 @@ export function HeroSection() {
             transition={{ delay: 1.2 + index * 0.4, duration: 0.6, ease: "easeOut" }}
             layout={false}
           >
-            <motion.span 
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                index === 3 
-                  ? 'glass-card border-primary/40 text-primary glow-subtle' 
-                  : 'glass-subtle text-muted-foreground hover:text-foreground hover:glass-card'
-              }`}
+            <motion.span
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${index === 3
+                ? 'glass-card border-primary/40 text-primary glow-subtle'
+                : 'glass-subtle text-muted-foreground hover:text-foreground hover:glass-card'
+                }`}
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ delay: 1.2 + index * 0.4, duration: 0.5 }}
             >
-              {step}
+              <Translate>{step}</Translate>
             </motion.span>
             {index < 3 && (
-              <motion.span 
+              <motion.span
                 className="text-primary/40 font-light"
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}

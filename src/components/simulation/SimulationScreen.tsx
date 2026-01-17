@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { 
-  Home, ChevronDown, ChevronUp, ArrowRight, BookOpen, 
+import {
+  Home, ChevronDown, ChevronUp, ArrowRight, BookOpen,
   FileText, Lightbulb, GraduationCap, CheckCircle2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -14,6 +14,7 @@ import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
 import { SimulationAIBot } from './SimulationAIBot';
+import { Translate } from '@/components/Translate';
 
 interface SimulationScreenProps {
   onComplete: () => void;
@@ -21,8 +22,8 @@ interface SimulationScreenProps {
 
 export function SimulationScreen({ onComplete }: SimulationScreenProps) {
   const navigate = useNavigate();
-  const { 
-    currentScenario, 
+  const {
+    currentScenario,
     aiScenarioData,
     pyqData
   } = useLearningStore();
@@ -60,9 +61,9 @@ export function SimulationScreen({ onComplete }: SimulationScreenProps) {
   }
 
   return (
-    <motion.div 
-      initial={{ opacity: 0 }} 
-      animate={{ opacity: 1 }} 
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
       className="h-screen flex flex-col bg-background"
     >
       {/* Header */}
@@ -77,24 +78,24 @@ export function SimulationScreen({ onComplete }: SimulationScreenProps) {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button 
-            variant="ghost" 
-            size="sm" 
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={() => {
               navigate('/');
               toast('Returning to home...', { icon: '🏠' });
             }}
             className="gap-2"
           >
-            <Home className="w-4 h-4" /> Home
+            <Home className="w-4 h-4" /> <Translate>Home</Translate>
           </Button>
-          <Button 
-            variant="hero" 
-            size="sm" 
+          <Button
+            variant="hero"
+            size="sm"
             onClick={onComplete}
             className="gap-2"
           >
-            Continue to Quiz <ArrowRight className="w-4 h-4" />
+            <Translate>Continue to Quiz</Translate> <ArrowRight className="w-4 h-4" />
           </Button>
         </div>
       </div>
@@ -112,7 +113,7 @@ export function SimulationScreen({ onComplete }: SimulationScreenProps) {
             <div className="flex items-start gap-3">
               <Lightbulb className="w-5 h-5 text-primary mt-1 flex-shrink-0" />
               <div>
-                <h3 className="font-semibold text-foreground mb-2">Welcome!</h3>
+                <h3 className="font-semibold text-foreground mb-2"><Translate>Welcome!</Translate></h3>
                 <p className="text-sm text-muted-foreground leading-relaxed">
                   {aiScenarioData.greeting}
                 </p>
@@ -129,7 +130,7 @@ export function SimulationScreen({ onComplete }: SimulationScreenProps) {
           >
             <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2">
               <BookOpen className="w-5 h-5 text-primary" />
-              Overview
+              <Translate>Overview</Translate>
             </h3>
             <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">
               {aiScenarioData.scenarioDescription}
@@ -145,7 +146,7 @@ export function SimulationScreen({ onComplete }: SimulationScreenProps) {
           >
             <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
               <FileText className="w-5 h-5 text-primary" />
-              Key Concepts
+              <Translate>Key Concepts</Translate>
             </h3>
             <div className="space-y-2">
               {aiScenarioData.keyConcepts.map((concept, index) => (
@@ -210,7 +211,7 @@ export function SimulationScreen({ onComplete }: SimulationScreenProps) {
                 className="flex-1"
               >
                 <BookOpen className="w-4 h-4 mr-2" />
-                Notes
+                <Translate>Notes</Translate>
               </Button>
               <Button
                 variant={activeTab === 'formulas' ? 'default' : 'ghost'}
@@ -219,7 +220,7 @@ export function SimulationScreen({ onComplete }: SimulationScreenProps) {
                 className="flex-1"
               >
                 <FileText className="w-4 h-4 mr-2" />
-                Formulas & Derivations
+                <Translate>Formulas & Derivations</Translate>
               </Button>
             </div>
 
@@ -241,8 +242,8 @@ export function SimulationScreen({ onComplete }: SimulationScreenProps) {
                     <div className="space-y-2">
                       <h4 className="font-semibold text-sm text-foreground mb-2">Formulas:</h4>
                       {currentScenario.formulas.map((formula, idx) => (
-                        <div 
-                          key={idx} 
+                        <div
+                          key={idx}
                           className="p-3 bg-secondary/30 rounded-lg border border-border/50 font-mono text-xs break-words"
                         >
                           {formula}
@@ -250,7 +251,7 @@ export function SimulationScreen({ onComplete }: SimulationScreenProps) {
                       ))}
                     </div>
                   )}
-                  
+
                   {/* Markdown Derivations */}
                   {currentScenario.derivations && (
                     <div className="mt-4">
@@ -260,18 +261,18 @@ export function SimulationScreen({ onComplete }: SimulationScreenProps) {
                           remarkPlugins={[remarkMath]}
                           rehypePlugins={[rehypeKatex]}
                         >
-                          {typeof currentScenario.derivations === 'string' 
-                            ? currentScenario.derivations 
+                          {typeof currentScenario.derivations === 'string'
+                            ? currentScenario.derivations
                             : JSON.stringify(currentScenario.derivations)}
                         </ReactMarkdown>
                       </div>
                     </div>
                   )}
 
-                  {(!currentScenario.formulas || currentScenario.formulas.length === 0) && 
-                   !currentScenario.derivations && (
-                    <p className="text-center py-8 text-muted-foreground/50">No formulas or derivations available</p>
-                  )}
+                  {(!currentScenario.formulas || currentScenario.formulas.length === 0) &&
+                    !currentScenario.derivations && (
+                      <p className="text-center py-8 text-muted-foreground/50">No formulas or derivations available</p>
+                    )}
                 </div>
               )}
             </div>
@@ -291,10 +292,10 @@ export function SimulationScreen({ onComplete }: SimulationScreenProps) {
               <div>
                 <h3 className="font-semibold text-foreground text-lg flex items-center gap-2">
                   <CheckCircle2 className="w-5 h-5 text-primary" />
-                  Practice Questions
+                  <Translate>Practice Questions</Translate>
                 </h3>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Previous Year Questions from NCERT
+                  <Translate>Previous Year Questions from NCERT</Translate>
                 </p>
               </div>
               {pyqData && (
@@ -348,8 +349,8 @@ export function SimulationScreen({ onComplete }: SimulationScreenProps) {
                       {/* Image if available */}
                       {question.hasImage && question.imageUrl && (
                         <div className="mb-3">
-                          <img 
-                            src={question.imageUrl} 
+                          <img
+                            src={question.imageUrl}
                             alt={question.imageDescription || 'Question diagram'}
                             className="max-w-full h-auto rounded-lg border border-border/50"
                           />
@@ -428,8 +429,8 @@ export function SimulationScreen({ onComplete }: SimulationScreenProps) {
             ) : (
               <div className="glass-card rounded-xl p-8 text-center">
                 <p className="text-muted-foreground">
-                  {pyqData 
-                    ? 'No practice questions available for this topic.' 
+                  {pyqData
+                    ? 'No practice questions available for this topic.'
                     : 'Loading practice questions...'}
                 </p>
               </div>

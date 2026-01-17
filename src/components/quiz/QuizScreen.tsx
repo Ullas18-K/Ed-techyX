@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  CheckCircle2, 
-  XCircle, 
-  ChevronRight, 
+import {
+  CheckCircle2,
+  XCircle,
+  ChevronRight,
   ArrowRight,
   Trophy,
   AlertTriangle,
@@ -12,6 +12,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { useLearningStore } from '@/lib/learningStore';
 import { cn } from '@/lib/utils';
+import { Translate } from '@/components/Translate';
 import React from 'react';
 
 interface QuizScreenProps {
@@ -19,13 +20,13 @@ interface QuizScreenProps {
 }
 
 export function QuizScreen({ onComplete }: QuizScreenProps) {
-  const { 
-    currentScenario, 
-    quizResults, 
-    currentQuizIndex, 
-    submitQuizAnswer, 
+  const {
+    currentScenario,
+    quizResults,
+    currentQuizIndex,
+    submitQuizAnswer,
     nextQuizQuestion,
-    isAIGenerated 
+    isAIGenerated
   } = useLearningStore();
 
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
@@ -68,7 +69,7 @@ export function QuizScreen({ onComplete }: QuizScreenProps) {
     } else {
       correctAnswerIndex = currentQuestion.correctAnswer as number;
     }
-    
+
     const isCorrect = selectedAnswer === correctAnswerIndex;
     submitQuizAnswer(currentQuestion.id, selectedAnswer, isCorrect);
     setShowFeedback(true);
@@ -100,13 +101,13 @@ export function QuizScreen({ onComplete }: QuizScreenProps) {
       >
         <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full glass-card text-primary text-xs font-semibold mb-2">
           <Trophy className="w-3 h-3" />
-          <span>Quiz</span>
+          <span><Translate>Quiz</Translate></span>
         </div>
         <h1 className="text-2xl font-bold text-foreground mb-2">
-          Check Your Understanding
+          <Translate>Check Your Understanding</Translate>
         </h1>
         <p className="text-muted-foreground text-sm">
-          Let's see what you've learned about {currentScenario.topic}
+          <Translate>{`Let's see what you've learned about ${currentScenario.topic}`}</Translate>
         </p>
       </motion.div>
 
@@ -119,10 +120,10 @@ export function QuizScreen({ onComplete }: QuizScreenProps) {
       >
         <div className="flex items-center justify-between text-xs mb-2">
           <span className="text-muted-foreground font-medium">
-            Q{currentQuizIndex + 1}/{questions.length}
+            <Translate>{`Q${currentQuizIndex + 1}/${questions.length}`}</Translate>
           </span>
           <span className="font-semibold text-success">
-            {correctCount} correct
+            <Translate>{`${correctCount} correct`}</Translate>
           </span>
         </div>
         <div className="flex gap-1 p-1 glass-subtle rounded-full">
@@ -133,11 +134,11 @@ export function QuizScreen({ onComplete }: QuizScreenProps) {
                 key={index}
                 className={cn(
                   "h-1.5 flex-1 rounded-full transition-all",
-                  index === currentQuizIndex 
-                    ? "bg-primary shadow-glow" 
-                    : result 
-                      ? result.correct 
-                        ? "bg-success" 
+                  index === currentQuizIndex
+                    ? "bg-primary shadow-glow"
+                    : result
+                      ? result.correct
+                        ? "bg-success"
                         : "bg-destructive"
                       : "bg-muted"
                 )}
@@ -165,7 +166,7 @@ export function QuizScreen({ onComplete }: QuizScreenProps) {
 
           {/* Question text */}
           <h2 className="text-base font-bold text-foreground mb-3">
-            {currentQuestion.question}
+            <Translate>{currentQuestion.question}</Translate>
           </h2>
 
           {/* Options */}
@@ -222,7 +223,7 @@ export function QuizScreen({ onComplete }: QuizScreenProps) {
                       "flex-1 text-foreground font-medium text-sm",
                       showFeedback && !isCorrect && !isSelected && "text-muted-foreground"
                     )}>
-                      {option}
+                      <Translate>{option}</Translate>
                     </span>
                   </div>
                 </motion.button>
@@ -243,8 +244,8 @@ export function QuizScreen({ onComplete }: QuizScreenProps) {
           >
             <div className={cn(
               "p-3 rounded-xl glass-card text-sm",
-              currentResult?.correct 
-                ? "border border-success/30" 
+              currentResult?.correct
+                ? "border border-success/30"
                 : "border border-destructive/30"
             )}>
               <div className="flex items-center gap-1.5 mb-2">
@@ -253,30 +254,30 @@ export function QuizScreen({ onComplete }: QuizScreenProps) {
                     <div className="p-1 rounded-lg bg-success/10">
                       <CheckCircle2 className="w-4 h-4 text-success" />
                     </div>
-                    <span className="font-bold text-success text-xs">Correct!</span>
+                    <span className="font-bold text-success text-xs"><Translate>Correct!</Translate></span>
                   </>
                 ) : (
                   <>
                     <div className="p-1 rounded-lg bg-destructive/10">
                       <XCircle className="w-4 h-4 text-destructive" />
                     </div>
-                    <span className="font-bold text-destructive text-xs">Not quite right</span>
+                    <span className="font-bold text-destructive text-xs"><Translate>Not quite right</Translate></span>
                   </>
                 )}
               </div>
               <p className="text-foreground/80 text-xs mb-2">
-                {currentQuestion.explanation}
+                <Translate>{currentQuestion.explanation}</Translate>
               </p>
-              
+
               {/* Misconception warning */}
               {!currentResult?.correct && currentQuestion.misconception && (
                 <div className="mt-2 p-2 glass-subtle rounded-lg border border-warning/30">
                   <div className="flex items-center gap-1.5 mb-1">
                     <AlertTriangle className="w-3 h-3 text-warning" />
-                    <span className="text-xs font-bold text-warning">Misconception</span>
+                    <span className="text-xs font-bold text-warning"><Translate>Misconception</Translate></span>
                   </div>
                   <p className="text-xs text-foreground/70">
-                    {currentQuestion.misconception}
+                    <Translate>{currentQuestion.misconception || ''}</Translate>
                   </p>
                 </div>
               )}
@@ -300,7 +301,7 @@ export function QuizScreen({ onComplete }: QuizScreenProps) {
             disabled={selectedAnswer === null}
             className="gap-1.5 rounded-lg text-xs"
           >
-            <span>Submit</span>
+            <span><Translate>Submit</Translate></span>
             <ChevronRight className="w-3 h-3" />
           </Button>
         ) : (
@@ -310,7 +311,7 @@ export function QuizScreen({ onComplete }: QuizScreenProps) {
             onClick={handleNextQuestion}
             className="gap-1.5 rounded-lg text-xs"
           >
-            <span>{isLastQuestion ? 'Results' : 'Next'}</span>
+            <span><Translate>{isLastQuestion ? 'Results' : 'Next'}</Translate></span>
             <ArrowRight className="w-3 h-3" />
           </Button>
         )}
@@ -326,7 +327,7 @@ export function QuizScreen({ onComplete }: QuizScreenProps) {
         <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full glass-card text-accent text-xs">
           <Sparkles className="w-3 h-3" />
           <span className="text-xs font-semibold">
-            +{currentResult?.correct ? 20 : 0} pts
+            <Translate>{`+${currentResult?.correct ? 20 : 0} pts`}</Translate>
           </span>
         </div>
       </motion.div>

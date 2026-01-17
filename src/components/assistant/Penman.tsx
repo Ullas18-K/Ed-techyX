@@ -10,6 +10,8 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { Translate } from '@/components/Translate';
+import { useTranslationStore } from '@/lib/translationStore';
 
 export interface PenmanMessage {
   instruction: string;
@@ -54,15 +56,22 @@ export const Penman: React.FC<PenmanProps> = ({
   const [isGlobalMuted, setIsGlobalMuted] = useState(false);
   const [showCompletionMessage, setShowCompletionMessage] = useState(false);
   const [lastCompletedTask, setLastCompletedTask] = useState<string | null>(null);
+  const { currentLanguage, translate } = useTranslationStore();
 
   // Voice synthesis
-  const speak = useCallback((text: string) => {
+  const speak = useCallback(async (text: string) => {
     if (isMuted || isGlobalMuted || !text) return;
+
+    let textToSpeak = text;
+    if (currentLanguage !== 'en') {
+      const result = await translate(text);
+      textToSpeak = result as string;
+    }
 
     // Cancel any ongoing speech
     speechSynthesis.cancel();
 
-    const utterance = new SpeechSynthesisUtterance(text);
+    const utterance = new SpeechSynthesisUtterance(textToSpeak);
     utterance.rate = 0.9;
     utterance.pitch = 1.1;
     utterance.volume = 0.8;
@@ -70,17 +79,19 @@ export const Penman: React.FC<PenmanProps> = ({
     // Try to use a pleasant voice
     const voices = speechSynthesis.getVoices();
     const preferredVoice = voices.find(voice =>
+      voice.lang.startsWith(currentLanguage === 'en' ? 'en' : currentLanguage)
+    ) || voices.find(voice =>
       voice.name.includes('Female') ||
       voice.name.includes('Samantha') ||
-      voice.name.includes('Karen') ||
-      voice.lang.includes('en')
+      voice.name.includes('Karen')
     );
     if (preferredVoice) {
       utterance.voice = preferredVoice;
+      utterance.lang = preferredVoice.lang;
     }
 
     speechSynthesis.speak(utterance);
-  }, [isMuted, isGlobalMuted]);
+  }, [isMuted, isGlobalMuted, currentLanguage, translate]);
 
   // Track which tasks we've already announced to prevent loops and duplicate messages
   const announcedTasksRef = React.useRef<Set<string>>(new Set(completedTasks));
@@ -221,7 +232,7 @@ export const Penman: React.FC<PenmanProps> = ({
                       "font-bold text-xs uppercase tracking-wider",
                       isShowingCompletion ? "text-green-700" : "text-blue-700"
                     )}>
-                      {isShowingCompletion ? "Well Done!" : "Penman Guide"}
+                      <Translate>{isShowingCompletion ? "Well Done!" : "Penman Guide"}</Translate>
                     </span>
                   </div>
 
@@ -269,15 +280,17 @@ export const Penman: React.FC<PenmanProps> = ({
 
                 {/* Message */}
                 <p className="text-sm leading-relaxed text-gray-800 mb-3">
-                  {isShowingCompletion
-                    ? currentMessage.completion
-                    : currentMessage.instruction}
+                  <Translate>
+                    {isShowingCompletion
+                      ? (currentMessage.completion || '')
+                      : (currentMessage.instruction || '')}
+                  </Translate>
                 </p>
 
                 {/* Hint */}
                 {!isShowingCompletion && currentMessage.hint && (
                   <p className="text-xs text-gray-600 italic border-l-2 border-yellow-300 pl-2 mb-3">
-                    💡 {currentMessage.hint}
+                    💡 <Translate>{currentMessage.hint}</Translate>
                   </p>
                 )}
 
@@ -291,7 +304,7 @@ export const Penman: React.FC<PenmanProps> = ({
                       onClick={handleSkip}
                     >
                       <SkipForward className="w-3 h-3 mr-1" />
-                      Skip
+                      <Translate>Skip</Translate>
                     </Button>
                   </div>
                 )}

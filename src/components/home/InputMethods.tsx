@@ -4,12 +4,31 @@ import { Mic, MicOff, Image, Send, Sparkles, X, Upload, Wand2 } from 'lucide-rea
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { sampleQuestions } from '@/lib/mockData';
+import { Translate } from '@/components/Translate';
+import { useTranslate } from '@/lib/useTranslate';
+import { useTranslationStore } from '@/lib/translationStore';
 
 interface InputMethodsProps {
   onSubmit: (question: string) => void;
 }
 
 export function InputMethods({ onSubmit }: InputMethodsProps) {
+  const { currentLanguage } = useTranslate();
+  const { translate } = useTranslationStore();
+  const [translatedPlaceholder, setTranslatedPlaceholder] = useState("Type your question here... (e.g., Why is photosynthesis important?)");
+
+  useEffect(() => {
+    const initPlaceholder = async () => {
+      const p = "Type your question here... (e.g., Why is photosynthesis important?)";
+      if (currentLanguage !== 'en') {
+        const result = await translate(p);
+        setTranslatedPlaceholder(result as string);
+      } else {
+        setTranslatedPlaceholder(p);
+      }
+    };
+    initPlaceholder();
+  }, [currentLanguage, translate]);
   const [question, setQuestion] = useState('');
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
@@ -99,7 +118,7 @@ export function InputMethods({ onSubmit }: InputMethodsProps) {
       )}>
         {/* Top shine effect */}
         <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/80 to-transparent" />
-        
+
         {/* Uploaded image preview */}
         <AnimatePresence>
           {uploadedImage && (
@@ -110,9 +129,9 @@ export function InputMethods({ onSubmit }: InputMethodsProps) {
               className="relative p-4 border-b border-border/40"
             >
               <div className="relative inline-block">
-                <img 
-                  src={uploadedImage} 
-                  alt="Uploaded" 
+                <img
+                  src={uploadedImage}
+                  alt="Uploaded"
                   className="max-h-32 rounded-2xl object-contain border border-border/50 shadow-soft"
                 />
                 <button
@@ -129,7 +148,7 @@ export function InputMethods({ onSubmit }: InputMethodsProps) {
                   className="mt-3 text-sm text-muted-foreground inline-flex items-center gap-2 glass-card rounded-xl px-4 py-2"
                 >
                   <Sparkles className="w-4 h-4 text-accent" />
-                  <span>Text extracted from image</span>
+                  <span><Translate>Text extracted from image</Translate></span>
                 </motion.div>
               )}
             </motion.div>
@@ -145,7 +164,7 @@ export function InputMethods({ onSubmit }: InputMethodsProps) {
             onKeyDown={handleKeyDown}
             onFocus={() => setIsFocused(true)}
             onBlur={() => setIsFocused(false)}
-            placeholder="Type your question here... (e.g., Why is photosynthesis important?)"
+            placeholder={translatedPlaceholder}
             className="w-full resize-none bg-transparent text-foreground placeholder:text-muted-foreground/50 focus:outline-none text-base leading-relaxed"
             rows={1}
           />
@@ -178,7 +197,7 @@ export function InputMethods({ onSubmit }: InputMethodsProps) {
                   ))}
                 </div>
                 <span className="text-sm text-destructive font-medium">
-                  Recording... {recordingTime}s
+                  <Translate>Recording...</Translate> {recordingTime}s
                 </span>
                 <div className="ml-auto flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full bg-destructive animate-pulse" />
@@ -235,7 +254,7 @@ export function InputMethods({ onSubmit }: InputMethodsProps) {
             className="gap-2 group rounded-lg text-sm"
           >
             <Wand2 className="w-4 h-4 group-hover:rotate-12 transition-transform" />
-            <span>Generate</span>
+            <span><Translate>Generate</Translate></span>
             <Send className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
           </Button>
         </div>

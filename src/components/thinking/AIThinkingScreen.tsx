@@ -1,18 +1,33 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLearningStore } from '@/lib/learningStore';
+import { Translate } from '@/components/Translate';
+import { useTranslationStore } from '@/lib/translationStore';
 
 // Typing animation component
 function TypingAnimation() {
-  const text = "Generating";
+  const { currentLanguage, translate } = useTranslationStore();
+  const [targetText, setTargetText] = useState("Generating");
   const [displayedText, setDisplayedText] = useState('');
   const [showCursor, setShowCursor] = useState(true);
 
   useEffect(() => {
+    const initTranslate = async () => {
+      if (currentLanguage !== 'en') {
+        const result = await translate("Generating");
+        setTargetText(result as string);
+      } else {
+        setTargetText("Generating");
+      }
+    };
+    initTranslate();
+  }, [currentLanguage, translate]);
+
+  useEffect(() => {
     let currentIndex = 0;
     const interval = setInterval(() => {
-      if (currentIndex < text.length) {
-        setDisplayedText(text.slice(0, currentIndex + 1));
+      if (currentIndex < targetText.length) {
+        setDisplayedText(targetText.slice(0, currentIndex + 1));
         currentIndex++;
       } else {
         currentIndex = 0;
@@ -21,7 +36,7 @@ function TypingAnimation() {
     }, 100);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [targetText]);
 
   useEffect(() => {
     const cursorInterval = setInterval(() => {
@@ -93,7 +108,7 @@ export function AIThinkingScreen({ onComplete }: AIThinkingScreenProps) {
             animate={{ opacity: 1, scale: 1 }}
             className="text-3xl font-light text-blue-300"
           >
-            Scenario Generated Successfully
+            <Translate>Scenario Generated Successfully</Translate>
           </motion.span>
         ) : (
           <TypingAnimation />

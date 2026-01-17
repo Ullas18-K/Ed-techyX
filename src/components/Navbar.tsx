@@ -1,7 +1,9 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { LogOut, Clock, Trophy, ChevronDown } from 'lucide-react';
+import { LogOut, Clock, Trophy, ChevronDown, Globe } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useAuthStore } from '@/lib/authStore';
+import { useTranslationStore } from '@/lib/translationStore';
+import { Translate } from '@/components/Translate';
 import { toast } from 'sonner';
 import { HistoryPanel } from '@/components/history/HistoryPanel';
 import { LeaderboardPanel } from '@/components/leaderboard/LeaderboardPanel';
@@ -12,8 +14,10 @@ interface NavbarProps {
 
 export function Navbar({ onProfileClick }: NavbarProps) {
   const { logout, user } = useAuthStore();
-  const [openDropdown, setOpenDropdown] = useState<'history' | 'leaderboard' | null>(null);
+  const { currentLanguage, setLanguage } = useTranslationStore();
+  const [openDropdown, setOpenDropdown] = useState<'history' | 'leaderboard' | 'language' | null>(null);
   const [isScrolled, setIsScrolled] = useState(false);
+  console.log('Navbar Render - Language:', currentLanguage, 'Dropdown:', openDropdown);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -68,17 +72,16 @@ export function Navbar({ onProfileClick }: NavbarProps) {
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, ease: [0.4, 0, 0.2, 1] }}
-        className={`flex items-center gap-2 md:gap-3 px-2 py-2.5 rounded-full pointer-events-auto transition-all duration-300 ${
-          isScrolled
-            ? 'glass-card shadow-lg backdrop-blur-xl'
-            : 'glass-card/70 shadow-md backdrop-blur-md'
-        }`}
+        className={`flex items-center gap-2 md:gap-3 px-2 py-2.5 rounded-full pointer-events-auto transition-all duration-300 relative z-10 ${isScrolled
+          ? 'glass-card shadow-lg backdrop-blur-xl'
+          : 'glass-card/70 shadow-md backdrop-blur-md'
+          }`}
       >
         {/* Logo */}
         <div className="px-3 py-1.5 rounded-full flex-shrink-0">
-          <img 
-            src="/EduVerse.-removebg-preview.png" 
-            alt="EduVerse Logo" 
+          <img
+            src="/EduVerse.-removebg-preview.png"
+            alt="EduVerse Logo"
             className="h-8 md:h-10 w-auto object-contain"
             loading="eager"
           />
@@ -98,11 +101,10 @@ export function Navbar({ onProfileClick }: NavbarProps) {
               className="px-3 py-2 rounded-full text-sm font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5 group"
             >
               <Clock className="w-4 h-4 group-hover:text-primary transition-colors" />
-              <span className="hidden md:inline">History</span>
-              <ChevronDown 
-                className={`w-3 h-3 transition-transform duration-300 ${
-                  openDropdown === 'history' ? 'rotate-180' : ''
-                }`}
+              <span className="hidden md:inline"><Translate>History</Translate></span>
+              <ChevronDown
+                className={`w-3 h-3 transition-transform duration-300 ${openDropdown === 'history' ? 'rotate-180' : ''
+                  }`}
               />
             </motion.button>
 
@@ -134,11 +136,10 @@ export function Navbar({ onProfileClick }: NavbarProps) {
               className="px-3 py-2 rounded-full text-sm font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5 group"
             >
               <Trophy className="w-4 h-4 group-hover:text-primary transition-colors" />
-              <span className="hidden md:inline">Leaderboard</span>
-              <ChevronDown 
-                className={`w-3 h-3 transition-transform duration-300 ${
-                  openDropdown === 'leaderboard' ? 'rotate-180' : ''
-                }`}
+              <span className="hidden md:inline"><Translate>Leaderboard</Translate></span>
+              <ChevronDown
+                className={`w-3 h-3 transition-transform duration-300 ${openDropdown === 'leaderboard' ? 'rotate-180' : ''
+                  }`}
               />
             </motion.button>
 
@@ -155,6 +156,65 @@ export function Navbar({ onProfileClick }: NavbarProps) {
                 >
                   <div className="max-h-96 overflow-y-auto">
                     <LeaderboardPanel />
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* Language Selector */}
+          <div className="relative">
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => {
+                console.log('Toggle Language Dropdown', openDropdown === 'language' ? 'close' : 'open');
+                setOpenDropdown(openDropdown === 'language' ? null : 'language');
+              }}
+              className="px-3 py-2 rounded-full text-sm font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5 group pointer-events-auto"
+            >
+              <Globe className="w-4 h-4 group-hover:text-primary transition-colors" />
+              <span className="hidden md:inline">
+                {currentLanguage === 'en' ? 'English' :
+                  currentLanguage === 'hi' ? 'Hindi' :
+                    currentLanguage === 'kn' ? 'Kannada' : 'Malayalam'}
+              </span>
+              <ChevronDown
+                className={`w-3 h-3 transition-transform duration-300 ${openDropdown === 'language' ? 'rotate-180' : ''
+                  }`}
+              />
+            </motion.button>
+
+            <AnimatePresence>
+              {openDropdown === 'language' && (
+                <motion.div
+                  variants={dropdownVariants}
+                  initial="hidden"
+                  animate="visible"
+                  exit="exit"
+                  className="absolute top-full right-0 mt-2 w-40 bg-background/95 backdrop-blur-xl rounded-2xl border border-primary/20 shadow-xl overflow-hidden pointer-events-auto z-[100]"
+                >
+                  <div className="py-1">
+                    {[
+                      { code: 'en', label: 'English' },
+                      { code: 'hi', label: 'Hindi' },
+                      { code: 'kn', label: 'Kannada' },
+                      { code: 'ml', label: 'Malayalam' }
+                    ].map((lang) => (
+                      <button
+                        key={lang.code}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setLanguage(lang.code);
+                          setOpenDropdown(null);
+                          toast.success(`Language changed to ${lang.label}`);
+                        }}
+                        className={`w-full px-4 py-2 text-left text-sm hover:bg-primary/10 transition-colors ${currentLanguage === lang.code ? 'text-primary font-bold' : 'text-foreground'
+                          }`}
+                      >
+                        {lang.label}
+                      </button>
+                    ))}
                   </div>
                 </motion.div>
               )}
@@ -198,7 +258,7 @@ export function Navbar({ onProfileClick }: NavbarProps) {
             title="Logout"
           >
             <LogOut className="w-4 h-4 text-destructive flex-shrink-0" />
-            <span className="text-xs md:text-sm font-semibold text-destructive hidden md:block">Logout</span>
+            <span className="text-xs md:text-sm font-semibold text-destructive hidden md:block"><Translate>Logout</Translate></span>
           </motion.button>
         </div>
       </motion.div>
@@ -206,8 +266,11 @@ export function Navbar({ onProfileClick }: NavbarProps) {
       {/* Close dropdown when clicking outside */}
       {openDropdown && (
         <div
-          className="fixed inset-0 pointer-events-auto"
-          onClick={() => setOpenDropdown(null)}
+          className="fixed inset-0 pointer-events-auto z-0"
+          onClick={() => {
+            console.log('Backdrop Clicked - Closing Dropdown');
+            setOpenDropdown(null);
+          }}
         />
       )}
     </div>

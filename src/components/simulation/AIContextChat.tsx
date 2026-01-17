@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils';
 import { getAIGuidance } from '@/lib/aiService';
 import { useAuthStore } from '@/lib/authStore';
 import { useLearningStore } from '@/lib/learningStore';
+import { Translate } from '@/components/Translate';
 
 interface RAGSource {
   chapter?: string;
@@ -148,7 +149,7 @@ export function AIContextChat({ scenarioId, currentTaskId, context, onTaskComple
         <div className="relative w-10 h-10 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center">
           <Bot className="w-5 h-5 text-white" />
           {isLoading && (
-            <motion.div 
+            <motion.div
               className="absolute inset-0"
               animate={{ scale: [1, 1.3, 1], opacity: [0.7, 0, 0.7] }}
               transition={{ duration: 1.5, repeat: Infinity }}
@@ -158,9 +159,9 @@ export function AIContextChat({ scenarioId, currentTaskId, context, onTaskComple
           )}
         </div>
         <div className="flex-1">
-          <h3 className="font-semibold text-foreground">AI Learning Assistant</h3>
+          <h3 className="font-semibold text-foreground"><Translate>AI Learning Assistant</Translate></h3>
           <p className="text-sm text-muted-foreground">
-            {isLoading ? 'Thinking...' : 'Ready to help'}
+            {isLoading ? <Translate>Thinking...</Translate> : <Translate>Ready to help</Translate>}
           </p>
         </div>
         <div className="flex items-center gap-2 px-3 py-1.5 rounded-full glass-card">
@@ -185,7 +186,7 @@ export function AIContextChat({ scenarioId, currentTaskId, context, onTaskComple
               >
                 <div className={cn(
                   "w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0",
-                  message.role === 'ai' 
+                  message.role === 'ai'
                     ? 'bg-gradient-to-br from-primary to-accent'
                     : 'bg-primary/20 border border-primary/30'
                 )}>
@@ -254,7 +255,7 @@ export function AIContextChat({ scenarioId, currentTaskId, context, onTaskComple
               <div className="flex-1 max-w-[80%] p-3 rounded-2xl glass-card">
                 <div className="flex items-center gap-2">
                   <Loader2 className="w-4 h-4 text-primary animate-spin" />
-                  <span className="text-sm text-muted-foreground">Thinking...</span>
+                  <span className="text-sm text-muted-foreground"><Translate>Thinking...</Translate></span>
                 </div>
               </div>
             </motion.div>
@@ -288,7 +289,7 @@ export function AIContextChat({ scenarioId, currentTaskId, context, onTaskComple
         <div className="flex items-center justify-center gap-2 mt-3">
           <Sparkles className="w-3.5 h-3.5 text-primary" />
           <p className="text-xs text-muted-foreground">
-            AI-Powered Learning Assistant
+            <Translate>AI-Powered Learning Assistant</Translate>
           </p>
         </div>
       </div>

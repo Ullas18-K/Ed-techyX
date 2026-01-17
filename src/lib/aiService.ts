@@ -1,5 +1,6 @@
 // AI Service API integration
 import { toast } from 'sonner';
+import { useTranslationStore } from './translationStore';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:9000/api';
 
@@ -119,13 +120,16 @@ export async function generateAIScenario(topic: string, token: string): Promise<
   try {
     console.log(`🤖 Generating AI scenario for: ${topic}`);
     console.log('⏳ This may take 30-60 seconds, please wait...');
-    
+
+    const language = useTranslationStore.getState().currentLanguage;
+
     // No timeout - let it complete naturally
     const response = await fetch(`${API_URL}/ai/scenario/generate`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`,
+        'x-language': language
       },
       body: JSON.stringify({
         grade: 10,
@@ -141,14 +145,14 @@ export async function generateAIScenario(topic: string, token: string): Promise<
     }
 
     const data = await response.json();
-    
+
     if (!data.success) {
       throw new Error(data.message || 'Failed to generate scenario');
     }
 
     console.log('✅ AI scenario generated successfully:', data.data.scenarioId);
     return data.data;
-    
+
   } catch (error: any) {
     console.error('❌ AI scenario generation failed:', error);
     toast.error('Failed to generate AI scenario. Please try again.');
@@ -165,11 +169,13 @@ export async function getAIGuidance(
   token: string
 ): Promise<AIConversationResponse> {
   try {
+    const language = useTranslationStore.getState().currentLanguage;
     const response = await fetch(`${API_URL}/ai/conversation/guide`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`,
+        'x-language': language
       },
       body: JSON.stringify({
         scenario_id: scenarioId,
@@ -185,13 +191,13 @@ export async function getAIGuidance(
     }
 
     const data = await response.json();
-    
+
     if (!data.success) {
       throw new Error(data.message || 'Failed to get AI guidance');
     }
 
     return data.data;
-    
+
   } catch (error) {
     console.error('❌ AI guidance failed:', error);
     // Return fallback response
@@ -213,13 +219,16 @@ export async function fetchPracticeQuestions(
   difficulty: string = 'medium'
 ): Promise<PYQResponse> {
   try {
+    const language = useTranslationStore.getState().currentLanguage;
     console.log(`📚 Fetching practice questions for: ${topic}`);
-    
+
     // No timeout - let it complete naturally
-    const response = await fetch(`http://localhost:8001/api/questions/practice`, {
+    const response = await fetch(`${API_URL}/ai/questions/practice`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+        'x-language': language
       },
       body: JSON.stringify({
         topic: topic,
@@ -237,9 +246,9 @@ export async function fetchPracticeQuestions(
     }
 
     const data = await response.json();
-    console.log(`✅ Fetched ${data.totalCount} practice questions`);
-    return data;
-    
+    console.log(`✅ Fetched ${data.data.totalCount} practice questions`);
+    return data.data;
+
   } catch (error: any) {
     console.error('❌ PYQ fetch failed:', error);
     toast.error('Failed to load practice questions. Please try again.');

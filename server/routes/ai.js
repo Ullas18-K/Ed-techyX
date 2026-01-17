@@ -2,6 +2,7 @@ import express from 'express';
 import axios from 'axios';
 import { body, validationResult } from 'express-validator';
 import { authenticateToken } from '../middleware/auth.js';
+import { translateObject } from '../services/translationService.js';
 
 const router = express.Router();
 
@@ -48,19 +49,29 @@ router.post('/scenario/generate', authenticateToken, scenarioValidation, async (
       student_id: req.user._id.toString(),
       difficulty: difficulty || 'medium'
     }, {
+<<<<<<< HEAD
       timeout: 300000 // 300 second timeout (5 minutes)
+=======
+      timeout: 300000 // 120 second timeout (2 minutes)
+>>>>>>> 94ad479 (translation added)
     });
 
     console.log(`✅ AI Service: Scenario generated successfully - ${response.data.scenarioId || 'unknown'}`);
 
+    // Translate response if requested
+    const targetLanguage = req.headers['x-language'] || 'en';
+    const translatedData = targetLanguage !== 'en'
+      ? await translateObject(response.data, targetLanguage)
+      : response.data;
+
     res.json({
       success: true,
-      data: response.data
+      data: translatedData
     });
 
   } catch (error) {
     console.error('❌ AI Service Error:', error.message);
-    
+
     // Handle different error types
     if (error.code === 'ECONNREFUSED') {
       return res.status(503).json({
@@ -111,19 +122,25 @@ router.post('/conversation/guide', authenticateToken, conversationValidation, as
       context: context || {},
       session_history: session_history || []
     }, {
-      timeout: 30000 // 30 second timeout for conversation
+      timeout: 300000 // 30 second timeout for conversation
     });
 
     console.log(`✅ AI Service: Guidance generated - Action: ${response.data.action}`);
 
+    // Translate response if requested
+    const targetLanguage = req.headers['x-language'] || 'en';
+    const translatedData = targetLanguage !== 'en'
+      ? await translateObject(response.data, targetLanguage)
+      : response.data;
+
     res.json({
       success: true,
-      data: response.data
+      data: translatedData
     });
 
   } catch (error) {
     console.error('❌ AI Service Error:', error.message);
-    
+
     if (error.code === 'ECONNREFUSED') {
       return res.status(503).json({
         success: false,
@@ -184,7 +201,7 @@ router.post('/rag/search', authenticateToken, async (req, res) => {
 
   } catch (error) {
     console.error('❌ RAG Search Error:', error.message);
-    
+
     if (error.code === 'ECONNREFUSED') {
       return res.status(503).json({
         success: false,
@@ -195,6 +212,45 @@ router.post('/rag/search', authenticateToken, async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to search content',
+      error: error.message
+    });
+  }
+});
+
+// @route   POST /api/ai/questions/practice
+// @desc    Get practice questions (PYQ + AI generated)
+// @access  Private
+router.post('/questions/practice', authenticateToken, async (req, res) => {
+  try {
+    const { topic, grade, subject, count, difficulty, includeGenerated } = req.body;
+
+    console.log(`📚 Fetching practice questions for: ${topic}`);
+
+    const response = await axios.post(`${AI_SERVICE_URL}/api/questions/practice`, {
+      topic,
+      grade,
+      subject,
+      count,
+      difficulty,
+      includeGenerated
+    });
+
+    // Translate response if requested
+    const targetLanguage = req.headers['x-language'] || 'en';
+    const translatedData = targetLanguage !== 'en'
+      ? await translateObject(response.data, targetLanguage)
+      : response.data;
+
+    res.json({
+      success: true,
+      data: translatedData
+    });
+
+  } catch (error) {
+    console.error('❌ Practice Questions Error:', error.message);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch practice questions',
       error: error.message
     });
   }
@@ -226,7 +282,7 @@ router.get('/stats', authenticateToken, async (req, res) => {
 
   } catch (error) {
     console.error('❌ Stats Error:', error.message);
-    
+
     res.json({
       success: true,
       stats: {

@@ -16,6 +16,7 @@ import { Label } from '../ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { UnifiedSimulationLayout } from '../simulation/UnifiedSimulationLayout';
 import { TaskItem } from '../simulation/TaskSidebar';
+import { Translate } from '@/components/Translate';
 
 import {
   Plus,
@@ -319,7 +320,7 @@ export const GeometricOptics: React.FC = () => {
               }`}
           >
             <Circle className="w-3 h-3 fill-current" />
-            LENS
+            <Translate>LENS</Translate>
           </button>
           <button
             onClick={() => setMode('mirror')}
@@ -329,36 +330,36 @@ export const GeometricOptics: React.FC = () => {
               }`}
           >
             <Circle className="w-3 h-3 fill-current" />
-            MIRROR
+            <Translate>MIRROR</Translate>
           </button>
         </div>
 
         {/* Add Actions Card */}
         <Card className="w-[180px] bg-white/90 backdrop-blur shadow-xl border-gray-200">
           <CardHeader className="p-3 pb-2 border-b border-gray-100">
-            <CardTitle className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Tools</CardTitle>
+            <CardTitle className="text-[10px] font-bold text-gray-500 uppercase tracking-widest"><Translate>Tools</Translate></CardTitle>
           </CardHeader>
           <CardContent className="p-3 space-y-2">
             {mode === 'lens' ? (
               <div className="grid grid-cols-2 gap-2">
                 <Button variant="outline" size="sm" onClick={() => handleAddLens('convex')} className="h-8 text-[10px] px-0 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200">
-                  + Convex
+                  + <Translate>Convex</Translate>
                 </Button>
                 <Button variant="outline" size="sm" onClick={() => handleAddLens('concave')} className="h-8 text-[10px] px-0 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200">
-                  + Concave
+                  + <Translate>Concave</Translate>
                 </Button>
               </div>
             ) : (
               <div className="space-y-2">
                 <Button variant="outline" size="sm" onClick={() => handleAddMirror('plane')} className="w-full h-8 text-[10px] hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200">
-                  + Plane Mirror
+                  + <Translate>Plane Mirror</Translate>
                 </Button>
                 <div className="grid grid-cols-2 gap-2">
                   <Button variant="outline" size="sm" onClick={() => handleAddMirror('concave')} className="h-8 text-[10px] px-0 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200">
-                    + Concave
+                    + <Translate>Concave</Translate>
                   </Button>
                   <Button variant="outline" size="sm" onClick={() => handleAddMirror('convex')} className="h-8 text-[10px] px-0 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200">
-                    + Convex
+                    + <Translate>Convex</Translate>
                   </Button>
                 </div>
               </div>
@@ -371,7 +372,7 @@ export const GeometricOptics: React.FC = () => {
                 onClick={() => removeElement(elements[0].id)}
                 className="w-full h-7 text-[10px] mt-1"
               >
-                <Trash2 className="w-3 h-3 mr-1" /> Remove
+                <Trash2 className="w-3 h-3 mr-1" /> <Translate>Remove</Translate>
               </Button>
             )}
           </CardContent>
@@ -384,12 +385,12 @@ export const GeometricOptics: React.FC = () => {
           <PopoverTrigger asChild>
             <Button variant="outline" size="sm" className="bg-white/90 backdrop-blur shadow-md border-gray-200 hover:bg-white text-gray-700">
               <Maximize2 className="w-4 h-4 mr-2 text-primary" />
-              VIEW
+              <Translate>VIEW</Translate>
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-64 bg-white/95 backdrop-blur-xl border-gray-200 p-4 shadow-xl mr-4" align="end">
             <h4 className="font-bold mb-4 text-[10px] text-primary uppercase tracking-[0.2em] flex items-center gap-2">
-              <Activity className="w-3 h-3" /> Visual Aids
+              <Activity className="w-3 h-3" /> <Translate>Visual Aids</Translate>
             </h4>
             <div className="space-y-3">
               {[
@@ -402,7 +403,7 @@ export const GeometricOptics: React.FC = () => {
                 { label: 'Measurements', checked: showMeasurements, toggle: toggleMeasurements },
               ].map((opt, i) => (
                 <div key={i} className="flex items-center justify-between">
-                  <Label className="text-xs text-gray-600 font-medium">{opt.label}</Label>
+                  <Label className="text-xs text-gray-600 font-medium"><Translate>{opt.label}</Translate></Label>
                   <Switch checked={opt.checked} onCheckedChange={opt.toggle} className="scale-75" />
                 </div>
               ))}
@@ -415,13 +416,13 @@ export const GeometricOptics: React.FC = () => {
       <div className="absolute bottom-4 left-4 pointer-events-auto w-[240px]">
         <Card className="bg-white/90 backdrop-blur shadow-xl border-gray-200">
           <CardHeader className="p-3 pb-2 border-b border-gray-100">
-            <CardTitle className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Object Properties</CardTitle>
+            <CardTitle className="text-[10px] font-bold text-gray-500 uppercase tracking-widest"><Translate>Object Properties</Translate></CardTitle>
           </CardHeader>
           <CardContent className="p-3 space-y-4">
             <div className="space-y-1.5">
               <div className="flex justify-between text-[10px] font-medium text-gray-500">
-                <span>Distance (u)</span>
-                <span className="font-mono text-primary font-bold">{(objectDistance / 10).toFixed(1)} cm</span>
+                <span><Translate>Distance (u)</Translate></span>
+                <span className="font-mono text-primary font-bold">{(objectDistance / 10).toFixed(1)} <Translate>cm</Translate></span>
               </div>
               <Slider
                 value={[objectDistance]}
@@ -432,8 +433,8 @@ export const GeometricOptics: React.FC = () => {
             </div>
             <div className="space-y-1.5">
               <div className="flex justify-between text-[10px] font-medium text-gray-500">
-                <span>Height (h)</span>
-                <span className="font-mono text-primary font-bold">{(object.height / 10).toFixed(1)} cm</span>
+                <span><Translate>Height (h)</Translate></span>
+                <span className="font-mono text-primary font-bold">{(object.height / 10).toFixed(1)} <Translate>cm</Translate></span>
               </div>
               <Slider
                 value={[object.height]}
@@ -452,15 +453,15 @@ export const GeometricOptics: React.FC = () => {
           <Card className="bg-white/90 backdrop-blur shadow-xl border-gray-200">
             <CardHeader className="p-3 pb-2 border-b border-gray-100">
               <CardTitle className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">
-                {mode === 'lens' ? 'Lens' : 'Mirror'} Properties
+                <Translate>{`${mode === 'lens' ? 'Lens' : 'Mirror'} Properties`}</Translate>
               </CardTitle>
             </CardHeader>
             <CardContent className="p-3 space-y-4">
               {/* Focal Length */}
               <div className="space-y-1.5">
                 <div className="flex justify-between text-[10px] font-medium text-gray-500">
-                  <span>Focal Length (f)</span>
-                  <span className="font-mono text-primary font-bold">{(focalLength / 10).toFixed(1)} cm</span>
+                  <span><Translate>Focal Length (f)</Translate></span>
+                  <span className="font-mono text-primary font-bold">{(focalLength / 10).toFixed(1)} <Translate>cm</Translate></span>
                 </div>
                 <Slider
                   value={[focalLength]}
@@ -475,8 +476,8 @@ export const GeometricOptics: React.FC = () => {
               {/* Diameter */}
               <div className="space-y-1.5">
                 <div className="flex justify-between text-[10px] font-medium text-gray-500">
-                  <span>Diameter (D)</span>
-                  <span className="font-mono text-primary font-bold">{(diameter / 10).toFixed(1)} cm</span>
+                  <span><Translate>Diameter (D)</Translate></span>
+                  <span className="font-mono text-primary font-bold">{(diameter / 10).toFixed(1)} <Translate>cm</Translate></span>
                 </div>
                 <Slider
                   value={[diameter]}
@@ -494,7 +495,7 @@ export const GeometricOptics: React.FC = () => {
               {mode === 'lens' && 'refractiveIndex' in elements[0] && (
                 <div className="space-y-1.5">
                   <div className="flex justify-between text-[10px] font-medium text-gray-500">
-                    <span>Refractive Index (n)</span>
+                    <span><Translate>Refractive Index (n)</Translate></span>
                     <span className="font-mono text-primary font-bold">{refractiveIndex.toFixed(2)}</span>
                   </div>
                   <Slider
@@ -531,20 +532,20 @@ export const GeometricOptics: React.FC = () => {
         />
         <div className="grid grid-cols-2 gap-2 text-xs pt-3 border-t border-gray-200">
           <div className="flex justify-between p-2 rounded bg-gray-50 border border-gray-100">
-            <span className="text-gray-500">Magnification</span>
+            <span className="text-gray-500"><Translate>Magnification</Translate></span>
             <span className="font-mono text-blue-600 font-bold">{image.magnification.toFixed(2)}x</span>
           </div>
           <div className="flex justify-between p-2 rounded bg-gray-50 border border-gray-100">
-            <span className="text-gray-500">Type</span>
-            <span className="font-bold text-blue-600">{image.isReal ? 'Real' : 'Virtual'}</span>
+            <span className="text-gray-500"><Translate>Type</Translate></span>
+            <span className="font-bold text-blue-600"><Translate>{image.isReal ? 'Real' : 'Virtual'}</Translate></span>
           </div>
         </div>
       </div>
     ) : (
       <div className="text-center py-8 text-gray-400 text-xs flex flex-col items-center gap-2">
         <Database className="w-8 h-8 opacity-20" />
-        <p>No simulation data available.</p>
-        <p className="opacity-50">Add an optical element to begin data logging.</p>
+        <p><Translate>No simulation data available.</Translate></p>
+        <p className="opacity-50"><Translate>Add an optical element to begin data logging.</Translate></p>
       </div>
     )
   );
@@ -593,7 +594,7 @@ export const GeometricOptics: React.FC = () => {
                 onClick={handleContinueLearning}
                 className="bg-green-600 hover:bg-green-700 text-white shadow-2xl border-4 border-green-400/30 rounded-full h-14 px-8 text-lg font-bold tracking-wide animate-pulse hover:animate-none transition-all flex items-center gap-2"
               >
-                <span>Continue Learning</span>
+                <span><Translate>Continue Learning</Translate></span>
                 <ArrowRight className="w-6 h-6" />
               </Button>
             </motion.div>
