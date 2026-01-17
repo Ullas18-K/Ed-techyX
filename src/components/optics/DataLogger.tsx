@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
-import { LineChart, Download, Trash2, Play, Pause, RotateCcw } from 'lucide-react';
+import { LineChart, Download, Play, Pause, RotateCcw, Activity } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
+import { motion } from 'framer-motion';
 
 interface DataPoint {
   timestamp: number;
@@ -19,11 +19,9 @@ interface DataLoggerProps {
 }
 
 const metrics = [
-  { id: 'objectDistance', label: 'Object Dist (u)', unit: 'cm', color: '#22c55e' },
-  { id: 'imageDistance', label: 'Image Dist (v)', unit: 'cm', color: '#3b82f6' },
-  { id: 'magnification', label: 'Magnification (m)', unit: '', color: '#f59e0b' },
-  { id: 'objectHeight', label: 'Object Height', unit: 'cm', color: '#a855f7' },
-  { id: 'imageHeight', label: 'Image Height', unit: 'cm', color: '#ec4899' },
+  { id: 'objectDistance', label: 'u', fullLabel: 'Object Dist', unit: 'cm', color: '#22c55e' },
+  { id: 'imageDistance', label: 'v', fullLabel: 'Image Dist', unit: 'cm', color: '#3b82f6' },
+  { id: 'magnification', label: 'm', fullLabel: 'Mag', unit: 'x', color: '#f59e0b' },
 ];
 
 export function DataLogger({
@@ -43,24 +41,22 @@ export function DataLogger({
       const newPoint: DataPoint = {
         timestamp: Date.now(),
         values: {
-          objectDistance: objectDistance / 10, // Convert px to cm (assuming 10px = 1cm)
+          objectDistance: objectDistance / 10,
           objectHeight: objectHeight / 10,
           imageDistance: Math.abs(imageDistance) / 10,
           imageHeight: Math.abs(imageHeight) / 10,
           magnification,
         },
       };
-      setDataPoints((prev) => [...prev, newPoint].slice(-20));
+      setDataPoints((prev) => [...prev, newPoint].slice(-40)); // Keep more points for smoother graph
     }
   }, [objectDistance, objectHeight, imageDistance, imageHeight, magnification, isRecording]);
 
-  const clearData = () => {
-    setDataPoints([]);
-  };
+  const clearData = () => setDataPoints([]);
 
   const exportData = () => {
     const csvContent = [
-      ['Timestamp', ...metrics.map((m) => `${m.label} (${m.unit})`), 'Focal Length (cm)'].join(','),
+      ['Timestamp', ...metrics.map((m) => `${m.fullLabel} (${m.unit})`), 'Focal Length (cm)'].join(','),
       ...dataPoints.map((point) => [
         new Date(point.timestamp).toISOString(),
         ...metrics.map((m) => (point.values[m.id] || 0).toFixed(2)),
@@ -72,217 +68,135 @@ export function DataLogger({
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'optics-experiment-data.csv';
+    a.download = 'optics_data.csv';
     a.click();
     URL.revokeObjectURL(url);
   };
 
-  // Graph dimensions
-  const graphWidth = 300;
-  const graphHeight = 120;
-  const padding = 20;
+  // Sparkline Graph Logic
+  const graphWidth = 320;
+  const graphHeight = 80;
+  const padding = 5;
 
   const selectedData = dataPoints.map((p) => p.values[selectedMetric] || 0);
   const maxValue = Math.max(...selectedData, 1);
   const minValue = Math.min(...selectedData, 0);
   const range = maxValue - minValue || 1;
 
-  // Create SVG path
-  const pathData = selectedData
+  const pathData = selectedData.length > 1 ? selectedData
     .map((value, index) => {
-      const x = padding + (index / (selectedData.length - 1 || 1)) * (graphWidth - 2 * padding);
-      const y = graphHeight - padding - ((value - minValue) / range) * (graphHeight - 2 * padding);
+      const x = (index / (selectedData.length - 1)) * graphWidth;
+      const y = graphHeight - ((value - minValue) / range) * graphHeight;
       return `${index === 0 ? 'M' : 'L'} ${x} ${y}`;
     })
-    .join(' ');
+    .join(' ') : '';
 
-  const selectedMetricData = metrics.find((m) => m.id === selectedMetric);
-  const currentColor = selectedMetricData?.color || '#3b82f6';
+  const selectedMetricInfo = metrics.find((m) => m.id === selectedMetric);
 
   return (
-    <Card className="bg-slate-900/80 border-slate-700">
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="p-2 rounded-lg bg-blue-500/10">
-              <LineChart className="w-5 h-5 text-blue-400" />
-            </div>
-            <div>
-              <CardTitle className="text-slate-100 text-sm">Data Logger</CardTitle>
-              <p className="text-xs text-slate-400">{dataPoints.length} data points</p>
-            </div>
-          </div>
-
-          <Button
-            size="sm"
-            variant={isRecording ? 'destructive' : 'outline'}
-            onClick={() => setIsRecording(!isRecording)}
-            className="gap-1.5"
-          >
-            {isRecording ? <Pause className="w-3 h-3" /> : <Play className="w-3 h-3" />}
-            {isRecording ? 'Stop' : 'Record'}
-          </Button>
-        </div>
-      </CardHeader>
-
-      <CardContent className="space-y-4">
-        {/* Metric selector */}
-        <div className="flex gap-2 flex-wrap">
-          {metrics.map((metric) => (
+    <div className="w-full">
+      {/* Header / Controls */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex bg-gray-100 p-1 rounded-lg">
+          {metrics.map(m => (
             <button
-              key={metric.id}
-              onClick={() => setSelectedMetric(metric.id)}
+              key={m.id}
+              onClick={() => setSelectedMetric(m.id)}
               className={cn(
-                'px-3 py-1.5 rounded-full text-xs font-medium transition-all',
-                selectedMetric === metric.id
-                  ? 'text-white shadow-lg'
-                  : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                "text-[10px] px-3 py-1 rounded-md font-bold uppercase transition-all",
+                selectedMetric === m.id ? "bg-white text-primary shadow-sm border border-gray-200" : "text-gray-500 hover:text-black hover:bg-gray-200"
               )}
-              style={{
-                backgroundColor: selectedMetric === metric.id ? metric.color : undefined,
-              }}
             >
-              {metric.label}
+              {m.label}
             </button>
           ))}
         </div>
 
-        {/* Graph */}
-        <div className="bg-slate-800/50 rounded-xl p-3">
-          {dataPoints.length > 1 ? (
-            <svg width="100%" viewBox={`0 0 ${graphWidth} ${graphHeight}`} className="w-full">
-              {/* Grid lines */}
-              {[0, 0.25, 0.5, 0.75, 1].map((ratio) => (
-                <line
-                  key={ratio}
-                  x1={padding}
-                  y1={padding + ratio * (graphHeight - 2 * padding)}
-                  x2={graphWidth - padding}
-                  y2={padding + ratio * (graphHeight - 2 * padding)}
-                  stroke="currentColor"
-                  strokeOpacity={0.1}
-                  strokeDasharray="4"
-                  className="text-slate-600"
-                />
-              ))}
-
-              {/* Data line */}
-              <path
-                d={pathData}
-                fill="none"
-                stroke={currentColor}
-                strokeWidth={2}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-
-              {/* Data points */}
-              {selectedData.map((value, index) => {
-                const x = padding + (index / (selectedData.length - 1 || 1)) * (graphWidth - 2 * padding);
-                const y =
-                  graphHeight - padding - ((value - minValue) / range) * (graphHeight - 2 * padding);
-                return <circle key={index} cx={x} cy={y} r={3} fill={currentColor} />;
-              })}
-
-              {/* Latest value label */}
-              {selectedData.length > 0 && (
-                <text
-                  x={graphWidth - padding}
-                  y={
-                    graphHeight -
-                    padding -
-                    ((selectedData[selectedData.length - 1] - minValue) / range) *
-                      (graphHeight - 2 * padding) -
-                    10
-                  }
-                  textAnchor="end"
-                  fill={currentColor}
-                  fontSize={12}
-                  fontWeight={600}
-                >
-                  {selectedData[selectedData.length - 1].toFixed(1)}
-                  {selectedMetricData?.unit}
-                </text>
-              )}
-            </svg>
-          ) : (
-            <div className="h-24 flex items-center justify-center text-slate-400 text-sm">
-              {isRecording ? 'Waiting for data...' : 'Start recording to see data'}
-            </div>
-          )}
+        <div className="flex gap-2">
+          <Button
+            variant={isRecording ? "destructive" : "outline"}
+            size="icon"
+            className={cn("w-7 h-7 rounded-full", isRecording ? "" : "border-gray-200 hover:bg-gray-100")}
+            onClick={() => setIsRecording(!isRecording)}
+          >
+            {isRecording ? <Pause className="w-3 h-3" /> : <Play className="w-3 h-3 ml-0.5 text-black" />}
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            className="w-7 h-7 rounded-full border-gray-200 text-gray-600 hover:text-black hover:bg-gray-100"
+            onClick={clearData}
+            disabled={dataPoints.length === 0}
+          >
+            <RotateCcw className="w-3 h-3" />
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            className="w-7 h-7 rounded-full border-gray-200 text-gray-600 hover:text-black hover:bg-gray-100"
+            onClick={exportData}
+            disabled={dataPoints.length === 0}
+          >
+            <Download className="w-3 h-3" />
+          </Button>
         </div>
+      </div>
 
-        {/* Stats */}
-        {dataPoints.length > 0 && (
-          <div className="grid grid-cols-3 gap-2">
-            <div className="bg-slate-800/50 rounded-lg p-2 text-center">
-              <p className="text-xs text-slate-400">Min</p>
-              <p className="text-sm font-semibold text-slate-100">
-                {Math.min(...selectedData).toFixed(1)}
-              </p>
-            </div>
-            <div className="bg-slate-800/50 rounded-lg p-2 text-center">
-              <p className="text-xs text-slate-400">Avg</p>
-              <p className="text-sm font-semibold text-slate-100">
-                {(selectedData.reduce((a, b) => a + b, 0) / selectedData.length).toFixed(1)}
-              </p>
-            </div>
-            <div className="bg-slate-800/50 rounded-lg p-2 text-center">
-              <p className="text-xs text-slate-400">Max</p>
-              <p className="text-sm font-semibold text-slate-100">
-                {Math.max(...selectedData).toFixed(1)}
-              </p>
-            </div>
+      {/* Graph Area */}
+      <div className="relative h-24 w-full bg-white rounded-xl border border-gray-200 p-2 overflow-hidden group shadow-sm">
+        {dataPoints.length > 1 ? (
+          <svg width="100%" height="100%" viewBox={`0 0 ${graphWidth} ${graphHeight}`} preserveAspectRatio="none" className="overflow-visible">
+            <path
+              d={pathData}
+              fill="none"
+              stroke={selectedMetricInfo?.color}
+              strokeWidth="2"
+              vectorEffect="non-scaling-stroke"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="drop-shadow-sm"
+            />
+            {/* Current Value Dot */}
+            <circle
+              cx={graphWidth}
+              cy={graphHeight - ((selectedData[selectedData.length - 1] - minValue) / range) * graphHeight}
+              r="4"
+              fill={selectedMetricInfo?.color}
+              className="animate-pulse"
+            />
+          </svg>
+        ) : (
+          <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-400 gap-2">
+            <Activity className="w-6 h-6 opacity-30" />
+            <span className="text-[10px] uppercase tracking-wider opacity-50">Start Recording</span>
           </div>
         )}
 
-        {/* Current Measurements */}
-        <div className="bg-slate-800/50 rounded-lg p-3 space-y-2">
-          <p className="text-xs font-semibold text-slate-300 mb-2">Current Values:</p>
-          <div className="grid grid-cols-2 gap-2 text-xs">
-            <div className="flex justify-between">
-              <span className="text-slate-400">Focal Length:</span>
-              <span className="text-slate-100 font-mono">{(focalLength / 10).toFixed(1)} cm</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-400">Magnification:</span>
-              <span className="text-slate-100 font-mono">{magnification.toFixed(2)}×</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-400">Object Dist (u):</span>
-              <span className="text-slate-100 font-mono">{(objectDistance / 10).toFixed(1)} cm</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-400">Image Dist (v):</span>
-              <span className="text-slate-100 font-mono">{Math.abs(imageDistance / 10).toFixed(1)} cm</span>
-            </div>
+        {/* Legend/Info Overlay */}
+        {dataPoints.length > 0 && (
+          <div className="absolute top-2 left-2 text-xs font-mono font-bold text-black/80">
+            {selectedData[selectedData.length - 1].toFixed(2)} <span className="text-[10px] text-gray-500">{selectedMetricInfo?.unit}</span>
           </div>
-        </div>
+        )}
+      </div>
 
-        {/* Actions */}
-        <div className="flex gap-2">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={clearData}
-            disabled={dataPoints.length === 0}
-            className="flex-1 gap-1.5"
-          >
-            <RotateCcw className="w-3 h-3" />
-            Clear
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={exportData}
-            disabled={dataPoints.length === 0}
-            className="flex-1 gap-1.5"
-          >
-            <Download className="w-3 h-3" />
-            Export CSV
-          </Button>
+      {/* Quick Stats Grid */}
+      <div className="grid grid-cols-3 gap-2 mt-4 text-[10px] uppercase tracking-wider">
+        <div className="bg-gray-50 rounded-lg p-2 text-center border border-gray-100">
+          <span className="text-gray-500 block mb-0.5">Focal Len</span>
+          <span className="text-black font-mono">{(focalLength / 10).toFixed(1)}</span>
         </div>
-      </CardContent>
-    </Card>
+        <div className="bg-gray-50 rounded-lg p-2 text-center border border-gray-100">
+          <span className="text-gray-500 block mb-0.5">Mag</span>
+          <span className="text-black font-mono">{magnification.toFixed(2)}x</span>
+        </div>
+        <div className="bg-gray-50 rounded-lg p-2 text-center border border-gray-100">
+          <span className="text-gray-500 block mb-0.5">Status</span>
+          <span className={imageHeight > 0 ? "text-green-600 font-bold" : "text-blue-600 font-bold"}>
+            {imageHeight > 0 ? "REAL" : "VIRT"}
+          </span>
+        </div>
+      </div>
+    </div>
   );
 }

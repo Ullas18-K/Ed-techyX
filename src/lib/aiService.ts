@@ -89,16 +89,42 @@ export interface AIConversationResponse {
   follow_up_suggestions?: string[];
 }
 
+export interface PYQQuestion {
+  questionId: string;
+  questionText: string;
+  topic: string;
+  subject: string;
+  grade: number;
+  year?: number;
+  difficulty?: string;
+  hasImage: boolean;
+  imageUrl?: string;
+  imageDescription?: string;
+  answer?: string;
+  answerExplanation?: string;
+  options?: string[];
+  correctOption?: string;
+  source: 'pyq' | 'generated';
+  sourcePdf?: string;
+  pageNumber?: number;
+}
+
+export interface PYQResponse {
+  questions: PYQQuestion[];
+  totalCount: number;
+  pyqCount: number;
+  generatedCount: number;
+  topic: string;
+  grade: number;
+}
+
 // Generate AI-powered learning scenario
 export async function generateAIScenario(topic: string, token: string): Promise<AIScenarioResponse> {
   try {
     console.log(`🤖 Generating AI scenario for: ${topic}`);
     console.log('⏳ This may take 30-60 seconds, please wait...');
     
-    // Create AbortController with 90 second timeout (scenario generation takes ~35 seconds)
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 90000); // 90 seconds
-    
+    // No timeout - let it complete naturally
     const response = await fetch(`${API_URL}/ai/scenario/generate`, {
       method: 'POST',
       headers: {
@@ -110,11 +136,8 @@ export async function generateAIScenario(topic: string, token: string): Promise<
         subject: 'science',
         topic: topic,
         difficulty: 'medium'
-      }),
-      signal: controller.signal
+      })
     });
-
-    clearTimeout(timeoutId);
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
@@ -131,13 +154,8 @@ export async function generateAIScenario(topic: string, token: string): Promise<
     return data.data;
     
   } catch (error: any) {
-    if (error.name === 'AbortError') {
-      console.error('❌ AI scenario generation timed out after 90 seconds');
-      toast.error('Generation took too long. Please try again.');
-    } else {
-      console.error('❌ AI scenario generation failed:', error);
-      toast.error('Failed to generate AI scenario. Using legacy mode.');
-    }
+    console.error('❌ AI scenario generation failed:', error);
+    toast.error('Failed to generate AI scenario. Please try again.');
     throw error;
   }
 }
@@ -188,6 +206,50 @@ export async function getAIGuidance(
       rag_used: false,
       confidence: 0.5
     };
+  }
+}
+
+// Fetch practice questions (PYQ)
+export async function fetchPracticeQuestions(
+  topic: string,
+  grade: number,
+  subject: string,
+  token: string,
+  count: number = 5,
+  difficulty: string = 'medium'
+): Promise<PYQResponse> {
+  try {
+    console.log(`📚 Fetching practice questions for: ${topic}`);
+    
+    // No timeout - let it complete naturally
+    const response = await fetch(`http://localhost:8001/api/questions/practice`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        topic: topic,
+        grade: grade,
+        subject: subject,
+        count: count,
+        difficulty: difficulty,
+        includeGenerated: true
+      })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    console.log(`✅ Fetched ${data.totalCount} practice questions`);
+    return data;
+    
+  } catch (error: any) {
+    console.error('❌ PYQ fetch failed:', error);
+    toast.error('Failed to load practice questions. Please try again.');
+    throw error;
   }
 }
 

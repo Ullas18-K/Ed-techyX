@@ -2,7 +2,7 @@
 import { create } from 'zustand';
 import { LearningScenario, findScenarioForQuestion } from './mockData';
 import { toast } from 'sonner';
-import { generateAIScenario, AIScenarioResponse } from './aiService';
+import { generateAIScenario, AIScenarioResponse, fetchPracticeQuestions, PYQResponse } from './aiService';
 
 interface StudyNote {
   id: string;
@@ -40,6 +40,7 @@ interface LearningState {
   isAIGenerated: boolean;
   isAIScenarioReady: boolean; // Flag to track when AI scenario is fully generated
   aiScenarioData: AIScenarioResponse | null;
+  pyqData: PYQResponse | null;
   
   // Simulation state
   simulationValues: Record<string, number | boolean | string>;
@@ -88,6 +89,7 @@ export const useLearningStore = create<LearningState>((set, get) => ({
   isAIGenerated: false,
   isAIScenarioReady: false,
   aiScenarioData: null,
+  pyqData: null,
   simulationValues: {},
   simulationResults: {},
   completedTasks: [],
@@ -117,6 +119,7 @@ export const useLearningStore = create<LearningState>((set, get) => ({
       isAIGenerated: false,
       isAIScenarioReady: false,
       aiScenarioData: null,
+      pyqData: null,
       simulationValues: defaultValues,
       simulationResults: {},
       completedTasks: [],
@@ -132,30 +135,40 @@ export const useLearningStore = create<LearningState>((set, get) => ({
 
   setAIScenario: async (topic: string, token: string) => {
     try {
-      const aiData = await generateAIScenario(topic, token);
+      // Call both APIs in parallel
+      console.log('🚀 Fetching AI scenario and PYQs in parallel...');
+      const [aiData, pyqData] = await Promise.all([
+        generateAIScenario(topic, token),
+        fetchPracticeQuestions(topic, 10, 'science', token, 5, 'medium')
+      ]);
       
       console.log('🔄 Converting AI scenario data...');
       console.log('📦 Full AI Data received:', JSON.stringify(aiData, null, 2));
+      console.log('📚 PYQ Data received:', pyqData.totalCount, 'questions');
       console.log('📋 Scenario Description:', aiData.scenarioDescription);
       console.log('💡 Key Concepts:', aiData.keyConcepts);
       console.log('🎯 Learning Objectives:', aiData.learningObjectives);
       
       // Convert AI response to LearningScenario format
+      // Extract safe values with defaults
+      const simulationConfig = (aiData.simulationConfig || {}) as any;
+      const simulationType = ((simulationConfig as any)?.type || 'photosynthesis') as any;
+      
       const scenario: LearningScenario = {
         id: aiData.scenarioId,
         topic: aiData.title,
         subject: aiData.subject,
         level: `Class ${aiData.gradeLevel}`,
         learningStyle: 'AI-Powered Interactive',
-        estimatedTime: aiData.estimatedDuration,
+        estimatedTime: aiData.estimatedDuration || '45 minutes',
         scenario: aiData.scenarioDescription,
-        concepts: aiData.keyConcepts.map(kc => kc.description),
-        objectives: aiData.learningObjectives.map(lo => lo.description),
+        concepts: aiData.keyConcepts?.map(kc => kc.description) || [],
+        objectives: aiData.learningObjectives?.map(lo => lo.description) || [],
         simulation: {
-          type: aiData.simulationConfig.type as any,
-          title: aiData.simulationConfig.title,
-          description: aiData.simulationConfig.description,
-          controls: aiData.simulationConfig.controls.map(ctrl => {
+          type: simulationType,
+          title: simulationConfig?.title || aiData.title,
+          description: simulationConfig?.description || aiData.scenarioDescription,
+          controls: (simulationConfig?.controls || []).map(ctrl => {
             const isDropdown = ctrl.controlType === 'dropdown';
             const control: any = {
               id: ctrl.name,
@@ -176,21 +189,21 @@ export const useLearningStore = create<LearningState>((set, get) => ({
             
             return control;
           }),
-          outputs: aiData.simulationConfig.outputs.map((out, i) => ({
+          outputs: (simulationConfig?.outputs || []).map((out, i) => ({
             id: out,
-            label: out.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+            label: typeof out === 'string' ? out.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : out,
             unit: '',
             color: ['success', 'info', 'warning'][i % 3]
           })),
-          tasks: aiData.tasks.map(t => t.instruction),
+          tasks: aiData.tasks?.map(t => t.instruction) || [],
           tutorMessages: []
         },
         explanations: [{
           title: 'AI Generated Explanation',
           type: 'step-by-step',
-          content: aiData.notes
+          content: aiData.notes || ''
         }],
-        quiz: aiData.quiz.map((q, i) => {
+        quiz: (aiData.quiz || []).map((q, i) => {
           console.log(`📝 Mapping quiz question ${i}:`, {
             question: q.question,
             optionsCount: q.options?.length,
@@ -200,9 +213,9 @@ export const useLearningStore = create<LearningState>((set, get) => ({
             id: `q${i}`,
             type: 'mcq',
             question: q.question,
-            options: q.options,
-            correctAnswer: q.correctAnswer,
-            explanation: q.explanation
+            options: q.options || [],
+            correctAnswer: q.correctAnswer || 0,
+            explanation: q.explanation || 'Check the NCERT textbook for detailed explanation.'
           };
         }),
         reflections: [
@@ -211,12 +224,13 @@ export const useLearningStore = create<LearningState>((set, get) => ({
           "What real-world applications can you think of?"
         ],
         examConnection: {
-          ncertChapter: aiData.ncertChapter,
-          boardRelevance: `Pages: ${aiData.ncertPageRefs.join(', ')}`,
+          ncertChapter: aiData.ncertChapter || aiData.title,
+          boardRelevance: aiData.ncertPageRefs ? `Pages: ${aiData.ncertPageRefs.join(', ')}` : 'Check NCERT textbook',
           competitiveExams: []
         },
         formulas: aiData.formulas || [],
-        notes: aiData.notes || ''
+        notes: aiData.notes || aiData.scenarioDescription,
+        derivations: (aiData as any).formulasAndDerivationsMarkdown || undefined
       };
 
       const defaultValues: Record<string, number | boolean | string> = {};
@@ -244,6 +258,7 @@ export const useLearningStore = create<LearningState>((set, get) => ({
         isAIGenerated: true,
         isAIScenarioReady: true,
         aiScenarioData: aiData,
+        pyqData: pyqData,
         simulationValues: defaultValues,
         simulationResults: {},
         completedTasks: [],

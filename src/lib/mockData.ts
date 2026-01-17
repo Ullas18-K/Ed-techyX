@@ -16,7 +16,9 @@ export interface LearningScenario {
   reflections: string[];
   examConnection: ExamConnection;
   formulas?: string[];
-  notes?: string;
+  notes?: string | string[];
+  pyq?: string | string[]; // Previous Year Questions
+  derivations?: string | string[]; // Mathematical derivations
 }
 
 export interface SimulationConfig {

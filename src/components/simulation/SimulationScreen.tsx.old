@@ -1,0 +1,779 @@
+import { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  Play, CheckCircle2, Circle, Sparkles, ArrowRight, BookOpen, 
+  FileText, X, Home, ChevronLeft, ChevronRight
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Slider } from '@/components/ui/slider';
+import { useLearningStore } from '@/lib/learningStore';
+import { useStudyRoomStore } from '@/lib/studyRoomStore';
+import { cn } from '@/lib/utils';
+import { SimulationTools, RulerOverlay, StopwatchWidget, CalculatorWidget, MagnifierOverlay } from './SimulationTools';
+import { AIChatPanel } from './AIChatPanel';
+import { DataLogger } from './DataLogger';
+import { CanvasAnnotations } from './CanvasAnnotations';
+import { SpeedControl } from './SpeedControl';
+import { StudyRoomPanel } from './StudyRoomPanel';
+import { AIContextChat } from './AIContextChat';
+import { toast } from 'sonner';
+
+interface SimulationScreenProps {
+  onComplete: () => void;
+}
+
+export function SimulationScreen({ onComplete }: SimulationScreenProps) {
+  const { 
+    currentScenario, 
+    isAIGenerated,
+    aiScenarioData,
+    simulationValues, 
+    simulationResults, 
+    completedTasks, 
+    learningSteps,
+    currentStepIndex,
+    updateSimulationValue, 
+    runExperiment, 
+    completeTask, 
+    setPhase,
+    initializeLearningSteps 
+  } = useLearningStore();
+  const { currentStudyRoom, currentUser, leaveStudyRoom } = useStudyRoomStore();
+
+  const [activeTool, setActiveTool] = useState<string | null>(null);
+  const [isAnnotating, setIsAnnotating] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [simulationSpeed, setSimulationSpeed] = useState(1);
+  const [isPlaying, setIsPlaying] = useState(true);
+  const [isExperimentRunning, setIsExperimentRunning] = useState(false);
+  const [showAIChat, setShowAIChat] = useState(false);
+  const [activeSection, setActiveSection] = useState<'formulas' | 'notes' | null>(null);
+  const [aiChatX, setAiChatX] = useState(0);
+  const aiChatRef = useRef<HTMLDivElement>(null);
+  const dragStartX = useRef(0);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const timeTrackingRef = useRef<NodeJS.Timeout>();
+
+  const simulation = currentScenario?.simulation;
+
+  // Debug logging
+  useEffect(() => {
+    console.log('🎮 SimulationScreen - Current State:', {
+      hasScenario: !!currentScenario,
+      isAIGenerated,
+      scenarioId: currentScenario?.id,
+      topic: currentScenario?.topic,
+      simulationType: simulation?.type,
+      controlsCount: simulation?.controls?.length,
+      controls: simulation?.controls?.map(c => ({ id: c.id, label: c.label, type: c.type }))
+    });
+  }, [currentScenario, isAIGenerated, simulation]);
+
+  // Track time spent in simulation
+  useEffect(() => {
+    timeTrackingRef.current = setInterval(() => {
+      const store = useLearningStore.getState();
+      store.checkStepCompletion();
+    }, 2000);
+
+    return () => {
+      if (timeTrackingRef.current) clearInterval(timeTrackingRef.current);
+    };
+  }, []);
+
+  // Initialize learning steps on mount
+  useEffect(() => {
+    if (currentScenario && learningSteps.length === 0) {
+      initializeLearningSteps();
+    }
+  }, [currentScenario, learningSteps.length, initializeLearningSteps]);
+
+  // Canvas drawing
+  useEffect(() => {
+    if (!canvasRef.current || !simulation) return;
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const draw = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      if (simulation.type === 'photosynthesis') drawPhotosynthesis(ctx, canvas.width, canvas.height);
+      else if (simulation.type === 'circuit') drawCircuit(ctx, canvas.width, canvas.height);
+      else drawDefault(ctx, canvas.width, canvas.height);
+    };
+
+    const drawPhotosynthesis = (ctx: CanvasRenderingContext2D, w: number, h: number) => {
+      const sunlight = (simulationValues.sunlight as number) || 50;
+      const health = simulationResults.health || 50;
+      
+      // Sky
+      const sky = ctx.createLinearGradient(0, 0, 0, h);
+      sky.addColorStop(0, `rgb(${180 + sunlight * 0.7}, ${200 + sunlight * 0.5}, 255)`);
+      sky.addColorStop(1, `rgb(${150 + sunlight * 0.5}, ${180 + sunlight * 0.5}, 255)`);
+      ctx.fillStyle = sky;
+      ctx.fillRect(0, 0, w, h);
+
+      // Sun
+      const sunSize = 25 + sunlight * 0.4;
+      ctx.beginPath();
+      ctx.arc(w - 70, 50, sunSize, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(255, ${200 + sunlight * 0.5}, 50, ${0.5 + sunlight / 200})`;
+      ctx.fill();
+
+      // Ground & pot
+      ctx.fillStyle = '#8B4513';
+      ctx.fillRect(0, h - 50, w, 50);
+      ctx.fillStyle = '#A0522D';
+      ctx.beginPath();
+      ctx.moveTo(w/2 - 45, h - 50);
+      ctx.lineTo(w/2 + 45, h - 50);
+      ctx.lineTo(w/2 + 35, h - 100);
+      ctx.lineTo(w/2 - 35, h - 100);
+      ctx.fill();
+
+      // Plant
+      const plantH = 40 + health * 0.7;
+      ctx.strokeStyle = '#228B22';
+      ctx.lineWidth = 6;
+      ctx.beginPath();
+      ctx.moveTo(w/2, h - 100);
+      ctx.lineTo(w/2, h - 100 - plantH);
+      ctx.stroke();
+
+      // Leaves
+      const leafSize = 12 + health * 0.15;
+      ctx.fillStyle = `rgb(34, ${90 + health * 0.6}, 34)`;
+      for (let i = 0; i < 4; i++) {
+        ctx.save();
+        ctx.translate(w/2, h - 120 - i * 22);
+        ctx.rotate((i % 2 === 0 ? 1 : -1) * 0.4);
+        ctx.beginPath();
+        ctx.ellipse(leafSize, 0, leafSize, leafSize/2, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+
+      // O2 bubbles
+      if (simulationResults.oxygen > 0) {
+        ctx.fillStyle = 'rgba(150, 200, 255, 0.6)';
+        const t = Date.now() / 800;
+        for (let i = 0; i < Math.min(5, simulationResults.oxygen / 15); i++) {
+          const bx = w/2 - 35 + Math.sin(t + i) * 25;
+          const by = h - 160 - (t * 25 + i * 18) % 80;
+          ctx.beginPath();
+          ctx.arc(bx, by, 3, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+    };
+
+    const drawCircuit = (ctx: CanvasRenderingContext2D, w: number, h: number) => {
+      const voltage = (simulationValues.voltage as number) || 6;
+      const current = simulationResults.current || 0;
+      const brightness = simulationResults.brightness || 0;
+
+      ctx.fillStyle = '#1a1a2e';
+      ctx.fillRect(0, 0, w, h);
+
+      // Grid
+      ctx.strokeStyle = 'rgba(100,100,150,0.15)';
+      for (let i = 0; i < w; i += 20) { ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, h); ctx.stroke(); }
+      for (let i = 0; i < h; i += 20) { ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(w, i); ctx.stroke(); }
+
+      // Battery
+      ctx.fillStyle = '#333';
+      ctx.fillRect(35, h/2 - 35, 25, 70);
+      ctx.fillStyle = '#4CAF50';
+      ctx.font = '11px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(`${voltage}V`, 47, h/2 + 50);
+
+      // Wires
+      ctx.strokeStyle = current > 0 ? '#FFD700' : '#666';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(47, h/2 - 40);
+      ctx.lineTo(47, 40);
+      ctx.lineTo(w - 47, 40);
+      ctx.lineTo(w - 47, h/2 - 25);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(47, h/2 + 35);
+      ctx.lineTo(47, h - 40);
+      ctx.lineTo(w - 47, h - 40);
+      ctx.lineTo(w - 47, h/2 + 25);
+      ctx.stroke();
+
+      // Bulb
+      const glow = ctx.createRadialGradient(w - 47, h/2, 0, w - 47, h/2, 45);
+      glow.addColorStop(0, `rgba(255,255,100,${brightness/100})`);
+      glow.addColorStop(1, 'rgba(255,255,100,0)');
+      ctx.fillStyle = glow;
+      ctx.fillRect(w - 92, h/2 - 45, 90, 90);
+      ctx.beginPath();
+      ctx.arc(w - 47, h/2, 22, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(255,255,${150 + brightness},${0.3 + brightness/200})`;
+      ctx.fill();
+      ctx.strokeStyle = '#888';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    };
+
+    const drawDefault = (ctx: CanvasRenderingContext2D, w: number, h: number) => {
+      // Generic dynamic visualization for AI-generated simulations
+      const t = Date.now() / 1000;
+      
+      // Gradient background based on first output value
+      const outputs = simulation.outputs || [];
+      const firstOutput = outputs[0];
+      const outputValue = firstOutput ? (simulationResults[firstOutput.id] || 0) : 50;
+      
+      // Create dynamic gradient based on output intensity
+      const gradient = ctx.createLinearGradient(0, 0, w, h);
+      const intensity = outputValue / 100;
+      gradient.addColorStop(0, `hsl(210, ${40 + intensity * 40}%, ${85 - intensity * 15}%)`);
+      gradient.addColorStop(1, `hsl(220, ${30 + intensity * 30}%, ${75 - intensity * 10}%)`);
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, w, h);
+
+      // Draw control representations (bars on the left)
+      const controls = simulation.controls.filter(c => c.type === 'slider').slice(0, 4);
+      const barWidth = 40;
+      const barSpacing = (h - 80) / Math.max(controls.length, 1);
+      
+      controls.forEach((control, i) => {
+        const value = (simulationValues[control.id] as number) || (control.default as number) || 0;
+        const maxVal = control.max || 100;
+        const normalized = value / maxVal;
+        const barHeight = normalized * 80;
+        
+        // Bar background
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+        ctx.fillRect(20, 40 + i * barSpacing, barWidth, 80);
+        
+        // Bar fill
+        const hue = 200 - i * 30;
+        ctx.fillStyle = `hsla(${hue}, 70%, 50%, 0.8)`;
+        ctx.fillRect(20, 40 + i * barSpacing + (80 - barHeight), barWidth, barHeight);
+        
+        // Label
+        ctx.fillStyle = '#333';
+        ctx.font = '11px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(control.label.substring(0, 8), 40, 35 + i * barSpacing);
+        ctx.fillText(Math.round(value).toString(), 40, 130 + i * barSpacing);
+      });
+
+      // Draw output visualizations (center)
+      const centerX = w / 2 + 40;
+      const centerY = h / 2;
+      
+      // Main visualization - pulsing circles representing outputs
+      outputs.forEach((output, i) => {
+        const val = simulationResults[output.id] || 0;
+        const normalized = val / 100;
+        const radius = 30 + (outputs.length - i) * 25;
+        const pulseRadius = radius + Math.sin(t * 2 + i) * 5 * normalized;
+        
+        // Outer glow
+        const glow = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, pulseRadius + 20);
+        const hue = 200 + i * 40;
+        glow.addColorStop(0, `hsla(${hue}, 70%, 60%, ${normalized * 0.3})`);
+        glow.addColorStop(1, 'transparent');
+        ctx.fillStyle = glow;
+        ctx.fillRect(centerX - pulseRadius - 20, centerY - pulseRadius - 20, 
+                     (pulseRadius + 20) * 2, (pulseRadius + 20) * 2);
+        
+        // Main circle
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, pulseRadius, 0, Math.PI * 2);
+        ctx.strokeStyle = `hsla(${hue}, 70%, 50%, ${0.6 + normalized * 0.4})`;
+        ctx.lineWidth = 3;
+        ctx.stroke();
+        
+        // Inner fill
+        ctx.fillStyle = `hsla(${hue}, 70%, 60%, ${normalized * 0.2})`;
+        ctx.fill();
+      });
+
+      // Center indicator
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, 8, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(100, 100, 255, 0.8)';
+      ctx.fill();
+
+      // Draw output value bars (right side)
+      const rightX = w - 120;
+      outputs.forEach((output, i) => {
+        const val = simulationResults[output.id] || 0;
+        const barY = 40 + i * (h - 80) / Math.max(outputs.length, 1);
+        const barH = 60;
+        const normalized = val / 100;
+        
+        // Background
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+        ctx.fillRect(rightX, barY, 80, barH);
+        
+        // Fill
+        const fillWidth = normalized * 80;
+        const hue = 120 + i * 60;
+        ctx.fillStyle = `hsla(${hue}, 70%, 50%, 0.8)`;
+        ctx.fillRect(rightX, barY, fillWidth, barH);
+        
+        // Label
+        ctx.fillStyle = '#333';
+        ctx.font = 'bold 12px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(output.label.substring(0, 10), rightX + 40, barY - 5);
+        ctx.fillText(`${Math.round(val)}`, rightX + 40, barY + barH / 2 + 5);
+      });
+
+      // Animated particles showing activity
+      if (outputValue > 20) {
+        ctx.fillStyle = 'rgba(100, 150, 255, 0.6)';
+        const particleCount = Math.floor(outputValue / 20);
+        for (let i = 0; i < particleCount; i++) {
+          const angle = (t + i) * 0.5;
+          const dist = 60 + Math.sin(t * 2 + i) * 20;
+          const px = centerX + Math.cos(angle) * dist;
+          const py = centerY + Math.sin(angle) * dist;
+          ctx.beginPath();
+          ctx.arc(px, py, 3, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      // Title overlay
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+      ctx.fillRect(w/2 - 120, 10, 240, 30);
+      ctx.fillStyle = '#333';
+      ctx.font = 'bold 14px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(simulation.title || 'Simulation', w/2, 30);
+    };
+
+    let animId: number;
+    const animate = () => { if (isPlaying) draw(); animId = requestAnimationFrame(animate); };
+    animate();
+    return () => cancelAnimationFrame(animId);
+  }, [simulation, simulationValues, simulationResults, isPlaying]);
+
+  const handleRunExperiment = () => {
+    setIsExperimentRunning(true);
+    runExperiment();
+    if (!completedTasks.includes(simulation?.tasks[0] || '')) completeTask(simulation?.tasks[0] || '');
+    toast.success('Experiment completed!');
+    setTimeout(() => setIsExperimentRunning(false), 1200);
+  };
+
+  if (!simulation || !currentScenario) return null;
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="h-screen flex flex-col bg-background bg-gradient-mesh noise overflow-hidden">
+      {/* Top bar - Compact header */}
+      <div className="flex items-center justify-between px-6 py-3 border-b border-border/50 glass-strong flex-shrink-0 rounded-b-lg">
+        <div className="flex items-center gap-3">
+          <h2 className="font-semibold text-foreground text-lg">{simulation.title}</h2>
+          <span className="text-xs text-primary bg-primary/10 px-3 py-1 rounded-full border border-primary/20">{currentScenario.subject}</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button 
+            variant="glass" 
+            size="sm" 
+            onClick={() => {
+              if (currentStudyRoom && currentUser) {
+                leaveStudyRoom(currentStudyRoom.id, currentUser.id);
+              }
+              setPhase('mastery');
+              toast('Returning to home...', { icon: '🏠' });
+            }}
+            className="gap-1.5"
+          >
+            <Home className="w-4 h-4" /> Home
+          </Button>
+        </div>
+      </div>
+
+      {/* Main content area - Reference layout with canvas full height on left */}
+      <div className="flex-1 flex overflow-hidden relative gap-3 p-4" style={{ maxHeight: 'calc(100vh - 64px)' }}>
+        {/* Left Column - Canvas (Full Height) */}
+        <div className="flex flex-col gap-3 flex-shrink-0" style={{ width: '50%' }}>
+          {/* Canvas Container */}
+          <div className="glass-card rounded-xl overflow-hidden flex flex-col flex-1 min-h-0">
+            <div className="relative flex-1 bg-muted">
+              <canvas ref={canvasRef} width={600} height={400} className="w-full h-full" />
+              
+              {/* Tool overlays */}
+              <AnimatePresence>
+                {activeTool === 'ruler' && <RulerOverlay />}
+                {activeTool === 'timer' && <StopwatchWidget />}
+                {activeTool === 'calculator' && <CalculatorWidget />}
+                {activeTool === 'magnifier' && <MagnifierOverlay />}
+              </AnimatePresence>
+
+              <CanvasAnnotations isActive={isAnnotating} onToggle={() => setIsAnnotating(!isAnnotating)} canvasRef={canvasRef} />
+
+              {isExperimentRunning && (
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-0 bg-foreground/10 backdrop-blur-sm flex items-center justify-center">
+                  <div className="flex items-center gap-3 px-5 py-2.5 bg-card rounded-full shadow-medium">
+                    <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }} className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full" />
+                    <span className="font-medium text-sm">Running...</span>
+                  </div>
+                </motion.div>
+              )}
+            </div>
+
+            {/* Bottom controls - Tools & Speed */}
+            <div className="p-3 border-t border-border/50 flex items-center justify-between flex-shrink-0">
+              <SimulationTools onToolSelect={setActiveTool} activeTool={activeTool} />
+              <SpeedControl speed={simulationSpeed} onSpeedChange={setSimulationSpeed} isPlaying={isPlaying} onPlayPause={() => setIsPlaying(!isPlaying)} onReset={() => { updateSimulationValue('sunlight', 50); updateSimulationValue('water', 50); }} />
+            </div>
+          </div>
+
+          {/* Bottom Row - PYQ & Data Logger Containers */}
+          <div className="flex gap-3 flex-shrink-0" style={{ height: '280px' }}>
+            {/* PYQ Container */}
+            <div className="glass-card rounded-xl p-3 flex-1 flex flex-col overflow-hidden">
+              <h3 className="font-semibold text-foreground text-xs mb-2 flex-shrink-0">PYQ</h3>
+              <div className="flex-1 overflow-y-auto text-xs text-muted-foreground">
+                {currentScenario.pyq && (typeof currentScenario.pyq === 'string' || Array.isArray(currentScenario.pyq)) ? (
+                  <>
+                    {typeof currentScenario.pyq === 'string' ? (
+                      <div className="whitespace-pre-wrap text-[10px]">{currentScenario.pyq}</div>
+                    ) : (
+                      <div className="space-y-1">
+                        {currentScenario.pyq.map((question, idx) => (
+                          <div key={idx} className="text-[10px]">
+                            <p className="font-semibold text-primary">Q{idx + 1}:</p>
+                            <p>{typeof question === 'string' ? question : JSON.stringify(question)}</p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <p className="text-center py-4">No PYQ</p>
+                )}
+              </div>
+            </div>
+
+            {/* Data Logger */}
+            <div className="flex-1 flex flex-col overflow-hidden min-h-0">
+              <DataLogger isRecording={isRecording} onToggleRecording={() => setIsRecording(!isRecording)} simulationResults={simulationResults} outputs={simulation.outputs} />
+            </div>
+          </div>
+        </div>
+
+        {/* Middle Column - Controls & Reference Section */}
+        <div className="flex flex-col gap-3 flex-shrink-0" style={{ width: '25%' }}>
+          {/* Controls - Reduced size */}
+          <div className="glass-card rounded-xl p-3 h-48 flex flex-col overflow-hidden flex-shrink-0">
+            <h3 className="font-semibold text-foreground mb-2 text-sm flex-shrink-0">Controls</h3>
+            <div className="space-y-3 flex-1 overflow-y-auto">
+              {simulation.controls.map((control) => (
+                <div key={control.id} className="space-y-1.5">
+                  <div className="flex justify-between text-xs">
+                    <span className="text-muted-foreground">{control.label}</span>
+                    <span className="text-primary font-medium">
+                      {simulationValues[control.id] ?? control.default}{control.unit}
+                    </span>
+                  </div>
+                  {control.type === 'slider' && (
+                    <Slider 
+                      value={[(simulationValues[control.id] as number) ?? (control.default as number)]} 
+                      min={control.min} 
+                      max={control.max} 
+                      step={control.step} 
+                      onValueChange={(v) => {
+                        updateSimulationValue(control.id, v[0]);
+                        const store = useLearningStore.getState();
+                        useLearningStore.setState({ 
+                          timeSpentInSimulation: store.timeSpentInSimulation + 2 
+                        });
+                      }}
+                      className="[&_[role=slider]]:bg-primary [&_[role=slider]]:border-primary/50" 
+                    />
+                  )}
+                  {control.type === 'select' && control.options && (
+                    <select
+                      value={String((simulationValues[control.id] as string) ?? control.default)}
+                      onChange={(e) => updateSimulationValue(control.id, e.target.value)}
+                      className="w-full px-2 py-1.5 rounded-lg bg-background/50 border border-border text-foreground text-xs"
+                    >
+                      {control.options.map((option: string) => (
+                        <option key={option} value={option}>{option}</option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+              ))}
+            </div>
+            <Button variant="hero" className="w-full mt-2 h-8 text-xs gap-2 flex-shrink-0" onClick={handleRunExperiment} disabled={isExperimentRunning}>
+              <Play className="w-3 h-3" /> Run
+            </Button>
+          </div>
+
+          {/* Reference Section - Formulas & Notes Only */}
+          <div className="glass-card rounded-xl p-3 flex-1 flex flex-col overflow-hidden min-h-0">
+            {/* Tabs */}
+            <div className="flex gap-2 mb-3 flex-shrink-0">
+              <Button 
+                variant={activeSection === 'formulas' ? "default" : "ghost"} 
+                size="sm" 
+                onClick={() => setActiveSection(activeSection === 'formulas' ? null : 'formulas')} 
+                className="gap-1 text-xs flex-1"
+              >
+                <FileText className="w-3 h-3" /> Formulas
+              </Button>
+              <Button 
+                variant={activeSection === 'notes' ? "default" : "ghost"} 
+                size="sm" 
+                onClick={() => setActiveSection(activeSection === 'notes' ? null : 'notes')} 
+                className="gap-1 text-xs flex-1"
+              >
+                <BookOpen className="w-3 h-3" /> Notes
+              </Button>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto">
+              {activeSection === 'formulas' ? (
+                <div className="space-y-2">
+                  {currentScenario.formulas && currentScenario.formulas.length > 0 ? (
+                    currentScenario.formulas.map((formula, idx) => (
+                      <div key={idx} className="p-2 bg-secondary/30 rounded-lg border border-border/50 text-xs space-y-1">
+                        <div className="font-mono text-primary break-words text-[10px]">{formula}</div>
+                        <Button 
+                          size="sm" 
+                          variant="ghost" 
+                          className="text-xs h-5 px-1 text-[10px]"
+                          onClick={() => {
+                            navigator.clipboard.writeText(formula);
+                            toast.success('Formula copied!');
+                          }}
+                        >
+                          Copy
+                        </Button>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-muted-foreground text-xs text-center py-4">No formulas available</p>
+                  )}
+                </div>
+              ) : activeSection === 'notes' ? (
+                <div className="space-y-2 text-xs">
+                  {currentScenario.notes && typeof currentScenario.notes === 'string' ? (
+                    <div className="p-2 bg-secondary/30 rounded-lg border border-border/50 text-xs whitespace-pre-wrap text-[10px]">
+                      {currentScenario.notes}
+                    </div>
+                  ) : currentScenario.notes ? (
+                    Array.isArray(currentScenario.notes) ? (
+                      currentScenario.notes.map((note, idx) => (
+                        <div key={idx} className="p-2 bg-secondary/30 rounded-lg border border-border/50 text-xs text-[10px]">
+                          {typeof note === 'string' ? note : JSON.stringify(note)}
+                        </div>
+                      ))
+                    ) : (
+                      <div className="p-2 bg-secondary/30 rounded-lg border border-border/50 text-xs text-[10px]">
+                        {JSON.stringify(currentScenario.notes)}
+                      </div>
+                    )
+                  ) : (
+                    <p className="text-muted-foreground text-xs text-center py-4">No notes available</p>
+                  )}
+                </div>
+              ) : (
+                <div className="flex items-center justify-center h-full text-muted-foreground text-xs">
+                  <p>Select a tab</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Right column - Learning Steps & Reference (Sidebar) */}
+        <div className="w-80 flex flex-col gap-3 p-4 border-l border-border/50 overflow-auto flex-shrink-0" style={{ maxHeight: 'calc(100vh - 64px)' }}>
+          {/* Study Room - if active */}
+          <AnimatePresence>
+            {currentStudyRoom && (
+              <StudyRoomPanel 
+                room={currentStudyRoom} 
+                onLeave={() => {}}
+              />
+            )}
+          </AnimatePresence>
+
+          {/* Learning Steps */}
+          <div className="glass-card rounded-xl p-3 max-h-80 flex flex-col overflow-hidden flex-shrink-0">
+            <div className="flex items-center gap-2 mb-2 flex-shrink-0">
+              <Sparkles className="w-4 h-4 text-primary flex-shrink-0" />
+              <h3 className="font-semibold text-foreground text-xs">Progress</h3>
+              <span className="ml-auto text-xs text-muted-foreground bg-secondary/50 px-2 py-0.5 rounded-full">
+                {learningSteps.filter(s => s.completed).length}/{learningSteps.length}
+              </span>
+            </div>
+            
+            <div className="space-y-1.5 overflow-y-auto flex-1">
+              {learningSteps.map((step, i) => {
+                const isCurrent = i === currentStepIndex;
+                const isLocked = i > currentStepIndex;
+                
+                return (
+                  <motion.div
+                    key={step.id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.05 }}
+                    className={cn(
+                      "p-2 rounded-lg transition-all text-xs",
+                      step.completed && "glass border-success/30 bg-success/10",
+                      isCurrent && !step.completed && "glass ring-1.5 ring-primary/30",
+                      isLocked && "glass-subtle opacity-50"
+                    )}
+                  >
+                    <div className="flex items-start gap-1.5">
+                      {step.completed ? (
+                        <CheckCircle2 className="w-3.5 h-3.5 text-success mt-0.5 flex-shrink-0" />
+                      ) : isCurrent ? (
+                        <motion.div
+                          animate={{ scale: [1, 1.2, 1] }}
+                          transition={{ duration: 2, repeat: Infinity }}
+                        >
+                          <Circle className="w-3.5 h-3.5 text-primary mt-0.5 flex-shrink-0 fill-primary/20" />
+                        </motion.div>
+                      ) : (
+                        <Circle className="w-3.5 h-3.5 text-muted-foreground mt-0.5 flex-shrink-0" />
+                      )}
+                      
+                      <div className="flex-1 min-w-0">
+                        <div className={cn(
+                          "font-medium text-xs",
+                          step.completed && "text-success",
+                          isCurrent && "text-primary"
+                        )}>
+                          {step.title}
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
+                          {step.description}
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+            
+            {learningSteps.filter(s => s.completed).length >= 3 && (
+              <Button variant="hero" className="w-full mt-2 h-7 text-xs gap-1 flex-shrink-0" onClick={onComplete}>
+                Continue <ArrowRight className="w-3 h-3" />
+              </Button>
+            )}
+          </div>
+
+          {/* Reference Section - Formulas & Notes Only */}
+          <div className="glass-card rounded-xl p-3 flex-1 flex flex-col overflow-hidden min-h-0">
+            <h3 className="font-semibold text-foreground text-xs mb-2 flex-shrink-0">Derivation</h3>
+            <div className="flex-1 overflow-y-auto text-xs text-muted-foreground">
+              {currentScenario.derivations && (typeof currentScenario.derivations === 'string' || Array.isArray(currentScenario.derivations)) ? (
+                <>
+                  {typeof currentScenario.derivations === 'string' ? (
+                    <div className="whitespace-pre-wrap text-[10px]">{currentScenario.derivations}</div>
+                  ) : (
+                    <div className="space-y-1">
+                      {currentScenario.derivations.map((derivation, idx) => (
+                        <div key={idx} className="text-[10px]">
+                          <p className="font-semibold text-primary">Deriv {idx + 1}:</p>
+                          <p>{typeof derivation === 'string' ? derivation : JSON.stringify(derivation)}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <p className="text-center py-4">No derivations</p>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Draggable AI Chat Component - Bottom Right */}
+        <AnimatePresence>
+          <motion.div
+            ref={aiChatRef}
+            drag="x"
+            dragConstraints={{ left: -400, right: 0 }}
+            dragElastic={0.2}
+            onDragStart={(e: any) => {
+              dragStartX.current = e.clientX;
+            }}
+            onDragEnd={(e: any, info) => {
+              // Snap to position
+              if (info.velocity.x < -500 || info.offset.x < -150) {
+                setAiChatX(-400); // Hidden
+                setShowAIChat(false);
+              } else {
+                setAiChatX(0); // Visible
+                setShowAIChat(true);
+              }
+            }}
+            animate={{ x: showAIChat ? 0 : 400 }}
+            transition={{ type: 'spring', damping: 20, stiffness: 300 }}
+            className="fixed bottom-6 right-6 w-96 h-96 z-40"
+          >
+            {/* Drag Handle Arrow */}
+            <div className="absolute -left-12 top-1/2 -translate-y-1/2 z-50">
+              <motion.button
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setShowAIChat(!showAIChat)}
+                className="p-2 bg-primary rounded-full text-white shadow-lg hover:bg-primary/90 transition-colors"
+              >
+                {showAIChat ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
+              </motion.button>
+            </div>
+
+            {/* AI Chat Container */}
+            <div className="glass-card rounded-xl h-full flex flex-col overflow-hidden shadow-2xl border border-primary/20">
+              {/* Header */}
+              <div className="px-4 py-3 border-b border-border/50 flex-shrink-0 flex items-center justify-between bg-gradient-to-r from-primary/10 to-transparent">
+                <h3 className="font-semibold text-foreground text-sm">AI Assistant</h3>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowAIChat(false)}
+                  className="h-6 w-6 p-0"
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+
+              {/* Chat Content */}
+              <div className="flex-1 overflow-hidden">
+                {isAIGenerated && aiScenarioData ? (
+                  <AIContextChat
+                    scenarioId={aiScenarioData.scenarioId}
+                    currentTaskId={currentStepIndex + 1}
+                    context={{
+                      greeting: aiScenarioData.greeting,
+                      grade: aiScenarioData.gradeLevel,
+                      subject: aiScenarioData.subject,
+                      topic: aiScenarioData.title,
+                      currentValues: simulationValues,
+                      results: simulationResults,
+                      task: aiScenarioData.tasks[currentStepIndex] || {}
+                    }}
+                    onTaskComplete={(taskId) => {
+                      toast.success(`Task ${taskId} completed!`);
+                    }}
+                  />
+                ) : (
+                  <AIChatPanel topicName={currentScenario.topic} subject={currentScenario.subject} simulationType={simulation.type} onRequestHint={() => toast.info('Hint: Try changing one variable at a time!')} onRequestExplanation={() => {}} />
+                )}
+              </div>
+            </div>
+          </motion.div>
+        </AnimatePresence>
+      </div>
+    </motion.div>
+  );
+} 
