@@ -26,8 +26,10 @@ export function SubjectGrid() {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 1 }}
+      transition={{ delay: 0.8, duration: 0.6 }}
       className="mt-20"
+      layout={false}
+      style={{ willChange: 'opacity, transform' }}
     >
       <h2 className="text-center text-lg font-semibold text-foreground/80 mb-8">
         Supports All Subjects • Class 1–12
@@ -39,9 +41,10 @@ export function SubjectGrid() {
             key={subject.name}
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 1 + index * 0.05 }}
+            transition={{ delay: 0.85 + index * 0.02, duration: 0.4 }}
             whileHover={{ scale: 1.08, y: -4 }}
             className="flex flex-col items-center gap-3 p-4 rounded-2xl glass-card hover:shadow-medium transition-all duration-300 cursor-pointer group"
+            layout={false}
           >
             <div 
               className="p-3 rounded-xl transition-all duration-300 group-hover:scale-110"

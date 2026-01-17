@@ -2,11 +2,12 @@ import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Play, CheckCircle2, Circle, Sparkles, ArrowRight, BookOpen, 
-  FileText, Maximize2, Minimize2, Settings, Layers
+  FileText, Maximize2, Minimize2, Settings, Layers, X, Home, Mic
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { useLearningStore } from '@/lib/learningStore';
+import { useStudyRoomStore } from '@/lib/studyRoomStore';
 import { cn } from '@/lib/utils';
 import { SimulationTools, RulerOverlay, StopwatchWidget, CalculatorWidget, MagnifierOverlay } from './SimulationTools';
 import { NotesPanel } from './NotesPanel';
@@ -16,6 +17,9 @@ import { CanvasAnnotations } from './CanvasAnnotations';
 import { FormulaReference } from './FormulaReference';
 import { SpeedControl } from './SpeedControl';
 import { HypothesisMode } from './HypothesisMode';
+import { LearningProgressBar } from './LearningProgressBar';
+import { StudyRoomPanel } from './StudyRoomPanel';
+import { ConversationalVoiceGuide } from './ConversationalVoiceGuide';
 import { toast } from 'sonner';
 
 interface SimulationScreenProps {
@@ -23,7 +27,20 @@ interface SimulationScreenProps {
 }
 
 export function SimulationScreen({ onComplete }: SimulationScreenProps) {
-  const { currentScenario, simulationValues, simulationResults, completedTasks, updateSimulationValue, runExperiment, completeTask } = useLearningStore();
+  const { 
+    currentScenario, 
+    simulationValues, 
+    simulationResults, 
+    completedTasks, 
+    learningSteps,
+    currentStepIndex,
+    updateSimulationValue, 
+    runExperiment, 
+    completeTask, 
+    setPhase,
+    initializeLearningSteps 
+  } = useLearningStore();
+  const { currentStudyRoom, currentUser, leaveStudyRoom } = useStudyRoomStore();
 
   const [activeTool, setActiveTool] = useState<string | null>(null);
   const [isNotesOpen, setIsNotesOpen] = useState(false);
@@ -35,9 +52,30 @@ export function SimulationScreen({ onComplete }: SimulationScreenProps) {
   const [simulationSpeed, setSimulationSpeed] = useState(1);
   const [isPlaying, setIsPlaying] = useState(true);
   const [isExperimentRunning, setIsExperimentRunning] = useState(false);
+  const [showVoiceGuide, setShowVoiceGuide] = useState(true);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const timeTrackingRef = useRef<NodeJS.Timeout>();
 
   const simulation = currentScenario?.simulation;
+
+  // Track time spent in simulation
+  useEffect(() => {
+    timeTrackingRef.current = setInterval(() => {
+      const store = useLearningStore.getState();
+      store.checkStepCompletion();
+    }, 2000);
+
+    return () => {
+      if (timeTrackingRef.current) clearInterval(timeTrackingRef.current);
+    };
+  }, []);
+
+  // Initialize learning steps on mount
+  useEffect(() => {
+    if (currentScenario && learningSteps.length === 0) {
+      initializeLearningSteps();
+    }
+  }, [currentScenario, learningSteps.length, initializeLearningSteps]);
 
   // Canvas drawing
   useEffect(() => {
@@ -208,6 +246,15 @@ export function SimulationScreen({ onComplete }: SimulationScreenProps) {
           <span className="text-xs text-primary bg-primary/10 px-3 py-1 rounded-full border border-primary/20">{currentScenario.subject}</span>
         </div>
         <div className="flex items-center gap-2">
+          <Button 
+            variant={showVoiceGuide ? "default" : "glass"} 
+            size="sm" 
+            onClick={() => setShowVoiceGuide(!showVoiceGuide)} 
+            className="gap-1.5"
+            title={showVoiceGuide ? "Hide voice guide" : "Show voice guide"}
+          >
+            <Mic className="w-4 h-4" /> {showVoiceGuide ? "Guide On" : "Guide Off"}
+          </Button>
           <Button variant="glass" size="sm" onClick={() => setIsFormulaOpen(!isFormulaOpen)} className="gap-1.5">
             <FileText className="w-4 h-4" /> Formulas
           </Button>
@@ -216,6 +263,20 @@ export function SimulationScreen({ onComplete }: SimulationScreenProps) {
           </Button>
           <Button variant="glass" size="sm" onClick={() => setIsFullscreen(!isFullscreen)}>
             {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+          </Button>
+          <Button 
+            variant="glass" 
+            size="sm" 
+            onClick={() => {
+              if (currentStudyRoom && currentUser) {
+                leaveStudyRoom(currentStudyRoom.id, currentUser.id);
+              }
+              setPhase('mastery');
+              toast('Returning to home...', { icon: '🏠' });
+            }}
+            className="gap-1.5"
+          >
+            <Home className="w-4 h-4" /> Home
           </Button>
         </div>
       </div>
@@ -266,7 +327,21 @@ export function SimulationScreen({ onComplete }: SimulationScreenProps) {
                       <span className="text-primary font-medium">{simulationValues[control.id] || control.default}{control.unit}</span>
                     </div>
                     {control.type === 'slider' && (
-                      <Slider value={[(simulationValues[control.id] as number) || (control.default as number)]} min={control.min} max={control.max} step={control.step} onValueChange={(v) => updateSimulationValue(control.id, v[0])} className="[&_[role=slider]]:bg-primary [&_[role=slider]]:border-primary/50" />
+                      <Slider 
+                        value={[(simulationValues[control.id] as number) || (control.default as number)]} 
+                        min={control.min} 
+                        max={control.max} 
+                        step={control.step} 
+                        onValueChange={(v) => {
+                          updateSimulationValue(control.id, v[0]);
+                          // Track interaction time
+                          const store = useLearningStore.getState();
+                          useLearningStore.setState({ 
+                            timeSpentInSimulation: store.timeSpentInSimulation + 2 
+                          });
+                        }}
+                        className="[&_[role=slider]]:bg-primary [&_[role=slider]]:border-primary/50" 
+                      />
                     )}
                   </div>
                 ))}
@@ -283,28 +358,104 @@ export function SimulationScreen({ onComplete }: SimulationScreenProps) {
         {/* Right: Tasks & Chat */}
         {!isFullscreen && (
           <div className="w-1/2 flex flex-col gap-4">
-            {/* Tasks */}
+            {/* Study Room Panel - Show if in room */}
+            <AnimatePresence>
+              {currentStudyRoom && (
+                <StudyRoomPanel 
+                  room={currentStudyRoom} 
+                  onLeave={() => {
+                    // Room left, panel will disappear
+                  }}
+                />
+              )}
+            </AnimatePresence>
+
+            {/* Learning Progress Bar */}
+            <div className="glass-card rounded-2xl p-6">
+              <LearningProgressBar steps={learningSteps} currentIndex={currentStepIndex} />
+            </div>
+
+            {/* Learning Steps */}
             <div className="glass-card rounded-2xl p-4">
               <div className="flex items-center gap-2 mb-3">
-                <CheckCircle2 className="w-5 h-5 text-primary" />
-                <h3 className="font-semibold text-foreground text-sm">Tasks</h3>
-                <span className="ml-auto text-xs text-muted-foreground bg-secondary/50 px-2 py-0.5 rounded-full">{completedTasks.length}/{simulation.tasks.length}</span>
+                <Sparkles className="w-5 h-5 text-primary" />
+                <h3 className="font-semibold text-foreground text-sm">Learning Progress</h3>
+                <span className="ml-auto text-xs text-muted-foreground bg-secondary/50 px-2 py-0.5 rounded-full">
+                  {learningSteps.filter(s => s.completed).length}/{learningSteps.length}
+                </span>
               </div>
+              
               <div className="space-y-2">
-                {simulation.tasks.map((task, i) => {
-                  const done = completedTasks.includes(task);
+                {learningSteps.map((step, i) => {
+                  const isCurrent = i === currentStepIndex;
+                  const isLocked = i > currentStepIndex;
+                  
                   return (
-                    <button key={i} onClick={() => !done && completeTask(task)} className={cn("flex items-start gap-2 p-3 rounded-xl w-full text-left transition-all text-sm", done ? "glass border-success/30 bg-success/10" : "glass-subtle hover:glass")}>
-                      {done ? <CheckCircle2 className="w-4 h-4 text-success mt-0.5" /> : <Circle className="w-4 h-4 text-muted-foreground mt-0.5" />}
-                      <span className={cn(done && "text-success line-through")}>{task}</span>
-                    </button>
+                    <motion.div
+                      key={step.id}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: i * 0.1 }}
+                      className={cn(
+                        "p-3 rounded-xl transition-all text-sm",
+                        step.completed && "glass border-success/30 bg-success/10",
+                        isCurrent && !step.completed && "glass ring-2 ring-primary/30",
+                        isLocked && "glass-subtle opacity-50"
+                      )}
+                    >
+                      <div className="flex items-start gap-2">
+                        {step.completed ? (
+                          <CheckCircle2 className="w-4 h-4 text-success mt-0.5 flex-shrink-0" />
+                        ) : isCurrent ? (
+                          <motion.div
+                            animate={{ scale: [1, 1.2, 1] }}
+                            transition={{ duration: 2, repeat: Infinity }}
+                          >
+                            <Circle className="w-4 h-4 text-primary mt-0.5 flex-shrink-0 fill-primary/20" />
+                          </motion.div>
+                        ) : (
+                          <Circle className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                        )}
+                        
+                        <div className="flex-1">
+                          <div className={cn(
+                            "font-medium",
+                            step.completed && "text-success",
+                            isCurrent && "text-primary"
+                          )}>
+                            {step.title}
+                          </div>
+                          <div className="text-xs text-muted-foreground mt-0.5">
+                            {step.description}
+                          </div>
+                          
+                          {isCurrent && !step.completed && (
+                            <div className="mt-2 text-xs text-primary/80 flex items-center gap-1">
+                              <motion.div
+                                animate={{ opacity: [0.5, 1, 0.5] }}
+                                transition={{ duration: 2, repeat: Infinity }}
+                              >
+                                ✨
+                              </motion.div>
+                              Current task - keep experimenting!
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </motion.div>
                   );
                 })}
               </div>
-              {completedTasks.length >= 3 && (
-                <Button variant="hero" className="w-full mt-4 gap-2" onClick={onComplete}>
-                  Continue <ArrowRight className="w-4 h-4" />
-                </Button>
+              
+              {learningSteps.filter(s => s.completed).length >= 3 && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                >
+                  <Button variant="hero" className="w-full mt-4 gap-2" onClick={onComplete}>
+                    Continue to Explanation <ArrowRight className="w-4 h-4" />
+                  </Button>
+                </motion.div>
               )}
             </div>
 
@@ -315,11 +466,22 @@ export function SimulationScreen({ onComplete }: SimulationScreenProps) {
           </div>
         )}
       </div>
-
       {/* Panels */}
       <NotesPanel isOpen={isNotesOpen} onClose={() => setIsNotesOpen(false)} topicName={currentScenario.topic} subject={currentScenario.subject} />
       <FormulaReference isOpen={isFormulaOpen} onClose={() => setIsFormulaOpen(false)} subject={currentScenario.subject} topic={currentScenario.topic} />
       <HypothesisMode isActive={showHypothesis} onClose={() => setShowHypothesis(false)} simulationType={simulation.type} onPredictionComplete={(correct) => correct && toast.success('+10 points!')} />
+      
+      {/* Conversational AI Voice Guide */}
+      {showVoiceGuide && (
+        <ConversationalVoiceGuide
+          topicName={currentScenario.topic}
+          simulationType={simulation.type}
+          onTaskComplete={(taskId) => {
+            toast.success(`Task ${taskId} completed!`);
+          }}
+          onClose={() => setShowVoiceGuide(false)}
+        />
+      )}
     </motion.div>
   );
 }

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { 
   BookOpen, 
@@ -8,10 +9,12 @@ import {
   FlaskConical, 
   ListChecks,
   Play,
-  Sparkles
+  Sparkles,
+  Users
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useLearningStore } from '@/lib/learningStore';
+import { StudyRoomModal } from '@/components/simulation/StudyRoomModal';
 
 interface LearningPlanScreenProps {
   onStart: () => void;
@@ -19,6 +22,7 @@ interface LearningPlanScreenProps {
 
 export function LearningPlanScreen({ onStart }: LearningPlanScreenProps) {
   const { currentScenario } = useLearningStore();
+  const [isStudyRoomModalOpen, setIsStudyRoomModalOpen] = useState(false);
 
   if (!currentScenario) return null;
 
@@ -202,19 +206,42 @@ export function LearningPlanScreen({ onStart }: LearningPlanScreenProps) {
         variants={itemVariants}
         className="text-center"
       >
-        <Button
-          variant="hero"
-          size="xl"
-          onClick={onStart}
-          className="gap-3 rounded-2xl"
-        >
-          <Play className="w-5 h-5" />
-          <span>Start Simulation</span>
-        </Button>
+        <div className="space-y-3">
+          <Button
+            variant="hero"
+            size="xl"
+            onClick={() => setIsStudyRoomModalOpen(true)}
+            className="gap-3 rounded-2xl w-full"
+          >
+            <Users className="w-5 h-5" />
+            <span>Study with Others</span>
+          </Button>
+          <Button
+            variant="hero"
+            size="xl"
+            onClick={onStart}
+            className="gap-3 rounded-2xl w-full"
+          >
+            <Play className="w-5 h-5" />
+            <span>Start Simulation</span>
+          </Button>
+        </div>
         <p className="text-sm text-muted-foreground mt-4">
           Your interactive learning experience awaits!
         </p>
       </motion.div>
+
+      {/* Study Room Modal */}
+      <StudyRoomModal
+        isOpen={isStudyRoomModalOpen}
+        onClose={() => setIsStudyRoomModalOpen(false)}
+        simulationType={currentScenario.simulation.type}
+        topic={currentScenario.topic}
+        subject={currentScenario.subject}
+        onRoomCreated={() => {
+          // Modal closes on creation
+        }}
+      />
     </motion.div>
   );
 }

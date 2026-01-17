@@ -11,10 +11,15 @@ import {
   Bot,
   User,
   FileText,
-  Wand2
+  Wand2,
+  Mic,
+  MicOff,
+  Volume2,
+  VolumeX
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 interface Message {
   id: string;
@@ -88,11 +93,117 @@ export function AIChatPanel({ topicName, subject, simulationType, onRequestHint,
   ]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [autoSpeak, setAutoSpeak] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const recognitionRef = useRef<any>(null);
+  const synthRef = useRef<SpeechSynthesis | null>(null);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  // Initialize speech recognition and synthesis
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      // Speech synthesis
+      if ('speechSynthesis' in window) {
+        synthRef.current = window.speechSynthesis;
+      }
+
+      // Speech recognition
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      if (SpeechRecognition) {
+        recognitionRef.current = new SpeechRecognition();
+        recognitionRef.current.continuous = false;
+        recognitionRef.current.interimResults = false;
+        recognitionRef.current.lang = 'en-US';
+
+        recognitionRef.current.onresult = (event: any) => {
+          const transcript = event.results[0][0].transcript;
+          setInput(transcript);
+          setIsListening(false);
+          toast.success(`Heard: "${transcript}"`);
+        };
+
+        recognitionRef.current.onerror = (event: any) => {
+          console.error('Speech recognition error:', event.error);
+          setIsListening(false);
+          if (event.error === 'not-allowed') {
+            toast.error('Microphone permission denied');
+          }
+        };
+
+        recognitionRef.current.onend = () => {
+          setIsListening(false);
+        };
+      }
+    }
+
+    return () => {
+      if (synthRef.current) {
+        synthRef.current.cancel();
+      }
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+    };
+  }, []);
+
+  const speakText = (text: string) => {
+    if (!synthRef.current) return;
+
+    synthRef.current.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 1;
+    utterance.pitch = 1;
+    utterance.volume = 0.8;
+
+    const voices = synthRef.current.getVoices();
+    const preferredVoice = voices.find(v => v.name.includes('Google') || v.name.includes('Natural')) 
+      || voices.find(v => v.lang.startsWith('en'))
+      || voices[0];
+    
+    if (preferredVoice) {
+      utterance.voice = preferredVoice;
+    }
+
+    utterance.onstart = () => setIsSpeaking(true);
+    utterance.onend = () => setIsSpeaking(false);
+    
+    synthRef.current.speak(utterance);
+  };
+
+  const toggleListening = () => {
+    if (!recognitionRef.current) {
+      toast.error('Speech recognition not supported. Please use Chrome or Edge.');
+      return;
+    }
+
+    if (isListening) {
+      recognitionRef.current.stop();
+      setIsListening(false);
+    } else {
+      try {
+        recognitionRef.current.start();
+        setIsListening(true);
+        toast.info('Listening... Speak your question');
+      } catch (error) {
+        console.error('Failed to start recognition:', error);
+        toast.error('Failed to start voice recognition');
+      }
+    }
+  };
+
+  const toggleSpeaking = () => {
+    if (!synthRef.current) return;
+
+    if (isSpeaking) {
+      synthRef.current.cancel();
+      setIsSpeaking(false);
+    }
+  };
 
   const findResponse = (query: string): string => {
     const lowerQuery = query.toLowerCase();
@@ -130,6 +241,11 @@ export function AIChatPanel({ topicName, subject, simulationType, onRequestHint,
       };
       setMessages(prev => [...prev, aiMessage]);
       setIsTyping(false);
+      
+      // Auto-speak the response if enabled
+      if (autoSpeak) {
+        speakText(response);
+      }
     }, 1000 + Math.random() * 1000);
   };
 
@@ -173,14 +289,27 @@ export function AIChatPanel({ topicName, subject, simulationType, onRequestHint,
     <div className="flex flex-col h-full">
       {/* Header */}
       <div className="p-4 border-b border-border">
-        <div className="flex items-center gap-2">
-          <div className="p-2 rounded-lg bg-gradient-ai">
-            <Sparkles className="w-5 h-5 text-primary-foreground" />
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="p-2 rounded-lg bg-gradient-ai">
+              <Sparkles className="w-5 h-5 text-primary-foreground" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-foreground">AI Tutor</h3>
+              <p className="text-xs text-muted-foreground">Ask me anything about {topicName}</p>
+            </div>
           </div>
-          <div>
-            <h3 className="font-semibold text-foreground">AI Tutor</h3>
-            <p className="text-xs text-muted-foreground">Ask me anything about {topicName}</p>
-          </div>
+          
+          {/* Auto-speak toggle */}
+          <Button
+            size="sm"
+            variant={autoSpeak ? "default" : "ghost"}
+            onClick={() => setAutoSpeak(!autoSpeak)}
+            className="gap-1.5 h-8"
+          >
+            {autoSpeak ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />}
+            <span className="text-xs">Auto-speak</span>
+          </Button>
         </div>
       </div>
 
@@ -216,6 +345,19 @@ export function AIChatPanel({ topicName, subject, simulationType, onRequestHint,
                   : "bg-primary text-primary-foreground"
               )}>
                 <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                
+                {/* Speak button for assistant messages */}
+                {message.role === 'assistant' && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => speakText(message.content)}
+                    className="mt-2 h-6 px-2 text-xs gap-1"
+                  >
+                    <Volume2 className="w-3 h-3" />
+                    {isSpeaking ? 'Speaking...' : 'Read aloud'}
+                  </Button>
+                )}
               </div>
             </motion.div>
           ))}
@@ -268,13 +410,35 @@ export function AIChatPanel({ topicName, subject, simulationType, onRequestHint,
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-            placeholder="Ask a question..."
+            placeholder={isListening ? "Listening..." : "Ask a question or use voice..."}
             className="flex-1 px-4 py-2.5 bg-secondary rounded-xl text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
           />
+          
+          {/* Voice input button */}
+          <Button 
+            onClick={toggleListening}
+            variant={isListening ? "default" : "outline"}
+            className={cn("gap-2", isListening && "animate-pulse")}
+          >
+            {isListening ? <Mic className="w-4 h-4" /> : <MicOff className="w-4 h-4" />}
+          </Button>
+          
+          {/* Send button */}
           <Button onClick={handleSend} className="gap-2" disabled={!input.trim()}>
             <Send className="w-4 h-4" />
           </Button>
         </div>
+        
+        {/* Voice hint */}
+        {isListening && (
+          <motion.p
+            initial={{ opacity: 0, y: -5 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-xs text-muted-foreground mt-2 text-center"
+          >
+            🎤 Listening... Speak your question now
+          </motion.p>
+        )}
       </div>
     </div>
   );
