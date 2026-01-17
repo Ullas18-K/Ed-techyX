@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useLearningStore } from '@/lib/learningStore';
+import { useRealtimeStudyRoomStore } from '@/lib/realtimeStudyRoomStore';
 import { cn } from '@/lib/utils';
 import { Translate } from '@/components/Translate';
 import React from 'react';
@@ -73,10 +74,24 @@ export function QuizScreen({ onComplete }: QuizScreenProps) {
     const isCorrect = selectedAnswer === correctAnswerIndex;
     submitQuizAnswer(currentQuestion.id, selectedAnswer, isCorrect);
     setShowFeedback(true);
+
+    // Update score in real-time for study room
+    const { roomId, updateMyScore } = useRealtimeStudyRoomStore.getState();
+    if (roomId) {
+      const currentScore = quizResults.filter(r => r.correct).length + (isCorrect ? 1 : 0);
+      updateMyScore(currentScore);
+    }
   };
 
   const handleNextQuestion = () => {
     if (isLastQuestion) {
+      // Calculate final score and submit to study room if in one
+      const { roomId, submitScore } = useRealtimeStudyRoomStore.getState();
+      if (roomId) {
+        const finalScore = quizResults.filter(r => r.correct).length;
+        const totalQuestions = questions.length;
+        submitScore(finalScore, totalQuestions);
+      }
       onComplete();
     } else {
       nextQuizQuestion();

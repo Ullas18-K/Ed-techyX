@@ -493,9 +493,9 @@ Make them specific to {topic} and encourage exploration.
         category = boundary_check.get("category", "OFF_TOPIC")
         
         redirect_messages = {
-            "BLOCK": f"I'm here to help you learn! Let's stick to educational topics. 📚 Do you have questions about {topic}?",
-            "OFF_TOPIC": f"That's an interesting question! But right now we're exploring {topic}. Let's focus on that. Do you have questions about what you're seeing in the simulation? 🔬",
-            "REDIRECT": f"That's a great topic for another time! For now, let's dive deeper into {topic}. What would you like to know about it? 💡"
+            "BLOCK": f"I'm here to help you learn! Let's stick to educational topics.  Do you have questions about {topic}?",
+            "OFF_TOPIC": f"That's an interesting question! But right now we're exploring {topic}. Let's focus on that. Do you have questions about what you're seeing in the simulation? ",
+            "REDIRECT": f"That's a great topic for another time! For now, let's dive deeper into {topic}. What would you like to know about it? "
         }
         
         message = redirect_messages.get(
@@ -519,7 +519,7 @@ Make them specific to {topic} and encourage exploration.
             Basic ConversationResponse
         """
         return ConversationResponse(
-            response="I'm having trouble connecting right now. Could you try asking that question again? 🔄",
+            response="I'm having trouble connecting right now. Could you try asking that question again? ",
             action="error",
             task_complete=False,
             rag_used=False,

@@ -41,7 +41,7 @@ interface LearningState {
   isAIScenarioReady: boolean; // Flag to track when AI scenario is fully generated
   aiScenarioData: AIScenarioResponse | null;
   pyqData: PYQResponse | null;
-  
+
   // Simulation state
   simulationValues: Record<string, number | boolean | string>;
   simulationResults: Record<string, number>;
@@ -50,19 +50,19 @@ interface LearningState {
   currentStepIndex: number;
   experimentCount: number;
   timeSpentInSimulation: number;
-  
+
   // Quiz state
   quizResults: QuizResult[];
   currentQuizIndex: number;
-  
+
   // Reflection state
   reflectionAnswers: Record<string, string>;
-  
+
   // Progress tracking
   studyNotes: StudyNote[];
   topicsCovered: string[];
   totalPoints: number;
-  
+
   // Actions
   setQuestion: (question: string) => void;
   setAIScenario: (topic: string, token: string) => Promise<void>;
@@ -78,6 +78,7 @@ interface LearningState {
   nextQuizQuestion: () => void;
   saveReflection: (question: string, answer: string) => void;
   saveToNotes: (notes: string) => void;
+  syncStudyRoomContent: (content: LearningScenario, aiData: AIScenarioResponse | null, pyqData: PYQResponse | null) => void;
   resetSession: () => void;
 }
 
@@ -103,16 +104,16 @@ export const useLearningStore = create<LearningState>((set, get) => ({
   studyNotes: [],
   topicsCovered: [],
   totalPoints: 0,
-  
+
   // Actions
   setQuestion: (question) => {
     const scenario = findScenarioForQuestion(question);
     const defaultValues: Record<string, number | boolean | string> = {};
-    
+
     scenario.simulation.controls.forEach(control => {
       defaultValues[control.id] = control.default;
     });
-    
+
     set({
       currentQuestion: question,
       currentScenario: scenario,
@@ -141,19 +142,19 @@ export const useLearningStore = create<LearningState>((set, get) => ({
         generateAIScenario(topic, token),
         fetchPracticeQuestions(topic, 10, 'science', token, 5, 'medium')
       ]);
-      
+
       console.log('🔄 Converting AI scenario data...');
       console.log('📦 Full AI Data received:', JSON.stringify(aiData, null, 2));
       console.log('📚 PYQ Data received:', pyqData.totalCount, 'questions');
       console.log('📋 Scenario Description:', aiData.scenarioDescription);
       console.log('💡 Key Concepts:', aiData.keyConcepts);
       console.log('🎯 Learning Objectives:', aiData.learningObjectives);
-      
+
       // Convert AI response to LearningScenario format
       // Extract safe values with defaults
       const simulationConfig = (aiData.simulationConfig || {}) as any;
       const simulationType = ((simulationConfig as any)?.type || 'photosynthesis') as any;
-      
+
       const scenario: LearningScenario = {
         id: aiData.scenarioId,
         topic: aiData.title,
@@ -176,7 +177,7 @@ export const useLearningStore = create<LearningState>((set, get) => ({
               type: isDropdown ? 'select' : 'slider',
               unit: ctrl.unit || ''
             };
-            
+
             if (isDropdown) {
               control.options = ctrl.options || [];
               control.default = ctrl.default || ctrl.options?.[0] || '';
@@ -186,7 +187,7 @@ export const useLearningStore = create<LearningState>((set, get) => ({
               control.step = ctrl.step ?? 1;
               control.default = ctrl.default ?? ctrl.min ?? 0;
             }
-            
+
             return control;
           }),
           outputs: (simulationConfig?.outputs || []).map((out, i) => ({
@@ -289,44 +290,44 @@ export const useLearningStore = create<LearningState>((set, get) => ({
       get().setQuestion(topic);
     }
   },
-  
+
   startLearning: () => {
     set({ currentPhase: 'thinking' });
   },
-  
+
   setPhase: (phase) => {
     set({ currentPhase: phase });
   },
-  
+
   updateSimulationValue: (id, value) => {
     set((state) => ({
       simulationValues: { ...state.simulationValues, [id]: value },
     }));
   },
-  
+
   runExperiment: () => {
     const { simulationValues, currentScenario, isAIGenerated } = get();
     if (!currentScenario) return;
-    
+
     // Increment experiment count and time
-    set((state) => ({ 
+    set((state) => ({
       experimentCount: state.experimentCount + 1,
-      timeSpentInSimulation: state.timeSpentInSimulation + 5 
+      timeSpentInSimulation: state.timeSpentInSimulation + 5
     }));
-    
+
     // Calculate mock results based on simulation type
     let results: Record<string, number> = {};
-    
+
     if (currentScenario.simulation.type === 'photosynthesis') {
       const sunlight = (simulationValues.sunlight as number) || 50;
       const water = (simulationValues.water as number) || 50;
       const co2 = (simulationValues.co2 as number) || 50;
       const temp = (simulationValues.temperature as number) || 25;
-      
+
       // Calculate outputs based on inputs
       const tempFactor = temp >= 20 && temp <= 35 ? 1 : 0.5;
       const efficiency = (sunlight + water + co2) / 3 * tempFactor;
-      
+
       results = {
         health: Math.min(100, Math.round(efficiency)),
         oxygen: Math.round(efficiency * 0.8),
@@ -337,11 +338,11 @@ export const useLearningStore = create<LearningState>((set, get) => ({
       const r1 = (simulationValues.resistance1 as number) || 10;
       const r2 = (simulationValues.resistance2 as number) || 10;
       const circuitType = (simulationValues.circuitType as string) || 'series';
-      
+
       const totalR = circuitType === 'series' ? r1 + r2 : (r1 * r2) / (r1 + r2);
       const current = voltage / totalR;
       const power = voltage * current;
-      
+
       results = {
         current: Math.round(current * 100) / 100,
         power: Math.round(power * 100) / 100,
@@ -352,7 +353,7 @@ export const useLearningStore = create<LearningState>((set, get) => ({
       // Take all numeric control values and calculate outputs proportionally
       const controls = currentScenario.simulation.controls;
       const outputs = currentScenario.simulation.outputs;
-      
+
       // Get all numeric values
       const numericValues = controls
         .filter(c => c.type === 'slider')
@@ -361,12 +362,12 @@ export const useLearningStore = create<LearningState>((set, get) => ({
           const max = c.max || 100;
           return (val || c.default as number || 0) / max; // Normalize to 0-1
         });
-      
+
       // Calculate average normalized value
-      const avgNormalized = numericValues.length > 0 
-        ? numericValues.reduce((sum, v) => sum + v, 0) / numericValues.length 
+      const avgNormalized = numericValues.length > 0
+        ? numericValues.reduce((sum, v) => sum + v, 0) / numericValues.length
         : 0.5;
-      
+
       // Generate results for each output
       outputs.forEach((output, i) => {
         // Vary results slightly based on output index
@@ -374,7 +375,7 @@ export const useLearningStore = create<LearningState>((set, get) => ({
         const value = Math.round(avgNormalized * 100 * variance);
         results[output.id] = Math.min(100, Math.max(0, value));
       });
-      
+
       console.log('🔬 Experiment Results:', {
         controls: controls.map(c => ({ id: c.id, value: simulationValues[c.id] })),
         outputs: results,
@@ -382,44 +383,44 @@ export const useLearningStore = create<LearningState>((set, get) => ({
         isAIGenerated
       });
     }
-    
+
     set({ simulationResults: results });
-    
+
     // Check step completion after experiment
     setTimeout(() => get().checkStepCompletion(), 500);
   },
-  
+
   completeTask: (task) => {
     set((state) => ({
       completedTasks: [...state.completedTasks, task],
       totalPoints: state.totalPoints + 10,
     }));
   },
-  
+
   submitQuizAnswer: (questionId, answer, correct) => {
     set((state) => ({
       quizResults: [...state.quizResults, { questionId, selectedAnswer: answer, correct }],
       totalPoints: state.totalPoints + (correct ? 20 : 0),
     }));
   },
-  
+
   nextQuizQuestion: () => {
     set((state) => ({
       currentQuizIndex: state.currentQuizIndex + 1,
     }));
   },
-  
+
   saveReflection: (question, answer) => {
     set((state) => ({
       reflectionAnswers: { ...state.reflectionAnswers, [question]: answer },
       totalPoints: state.totalPoints + 15,
     }));
   },
-  
+
   saveToNotes: (notes) => {
     const { currentQuestion, currentScenario, studyNotes, topicsCovered } = get();
     if (!currentScenario) return;
-    
+
     const newNote: StudyNote = {
       id: Date.now().toString(),
       question: currentQuestion,
@@ -428,15 +429,26 @@ export const useLearningStore = create<LearningState>((set, get) => ({
       notes,
       completed: true,
     };
-    
+
     set({
       studyNotes: [...studyNotes, newNote],
-      topicsCovered: topicsCovered.includes(currentScenario.topic) 
-        ? topicsCovered 
+      topicsCovered: topicsCovered.includes(currentScenario.topic)
+        ? topicsCovered
         : [...topicsCovered, currentScenario.topic],
     });
   },
-  
+
+  syncStudyRoomContent: (content, aiData, pyqData) => {
+    set({
+      currentScenario: content,
+      aiScenarioData: aiData,
+      pyqData: pyqData,
+      isAIGenerated: !!aiData,
+      isAIScenarioReady: !!aiData,
+      currentPhase: 'simulation'
+    });
+  },
+
   initializeLearningSteps: () => {
     const { currentScenario } = get();
     if (!currentScenario) return;
@@ -520,21 +532,19 @@ export const useLearningStore = create<LearningState>((set, get) => ({
     if (shouldComplete) {
       const updatedSteps = [...learningSteps];
       updatedSteps[currentStepIndex] = { ...currentStep, completed: true };
-      
-      // Show completion toast
+
       toast.success(`✅ ${currentStep.title} completed! +15 points`, {
-        description: currentStepIndex < learningSteps.length - 1 
-          ? `Next: ${learningSteps[currentStepIndex + 1].title}` 
+        description: currentStepIndex < learningSteps.length - 1
+          ? `Next: ${learningSteps[currentStepIndex + 1].title}`
           : 'All steps completed!',
       });
-      
+
       set((state) => ({
         learningSteps: updatedSteps,
         totalPoints: state.totalPoints + 15,
         completedTasks: [...state.completedTasks, currentStep.title]
       }));
 
-      // Auto-advance to next step
       setTimeout(() => {
         get().advanceToNextStep();
       }, 800);

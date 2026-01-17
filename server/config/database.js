@@ -9,7 +9,7 @@ const connectDB = async () => {
 
     console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
     console.log(`📊 Database: ${conn.connection.name}`);
-    
+
     // Handle connection events
     mongoose.connection.on('error', (err) => {
       console.error('❌ MongoDB connection error:', err);
@@ -28,7 +28,7 @@ const connectDB = async () => {
 
   } catch (error) {
     console.error('❌ Error connecting to MongoDB:', error.message);
-    process.exit(1);
+    console.warn('⚠️ Server will continue running without MongoDB. Some features may not work.');
   }
 };
 

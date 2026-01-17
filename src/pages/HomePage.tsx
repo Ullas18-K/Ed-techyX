@@ -10,6 +10,8 @@ import { useLearningStore } from '@/lib/learningStore';
 import { useAuthStore } from '@/lib/authStore';
 import { toast } from 'sonner';
 import { HomePenman } from '@/components/assistant/HomePenman';
+import { Users } from 'lucide-react';
+import { JoinRoomModal } from '@/components/studyroom/JoinRoomModal';
 
 const pageVariants = {
   hidden: { opacity: 0 },
@@ -38,6 +40,7 @@ const HomePage = () => {
   const [showProfile, setShowProfile] = useState(false);
   const [profileAnchor, setProfileAnchor] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
   const [isThinking, setIsThinking] = useState(false);
+  const [showJoinRoom, setShowJoinRoom] = useState(false);
 
   // Reset to home when component mounts
   useEffect(() => {
@@ -165,22 +168,26 @@ const HomePage = () => {
             {/* Added Home Assistant */}
             <HomePenman />
 
+            {/* Study Room Entry Point */}
+            <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-40 flex flex-col items-center gap-4">
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setShowJoinRoom(true)}
+                className="flex items-center gap-2 px-6 py-2.5 rounded-full glass-panel border-primary/20 shadow-glow hover:bg-primary/5 transition-all"
+              >
+                <Users className="w-4 h-4 text-primary" />
+                <span className="text-xs font-bold text-foreground">JOIN STUDY ROOM</span>
+              </motion.button>
+            </div>
+
+            <JoinRoomModal
+              isOpen={showJoinRoom}
+              onClose={() => setShowJoinRoom(false)}
+            />
+
             {/* Powered by Gemini Attribution */}
-            <motion.div
-              className="fixed bottom-8 right-8 z-50 flex flex-col items-end gap-1 pointer-events-auto"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 1, duration: 0.5 }}
-            >
-              <span className="text-[9px] font-medium uppercase tracking-[0.3em] text-muted-foreground/40 mr-1">
-                Powered by
-              </span>
-              <img
-                src="/gemini.png"
-                alt="Gemini AI"
-                className="h-8 w-auto object-contain brightness-110 opacity-60 hover:opacity-100 transition-all duration-300 drop-shadow-sm"
-              />
-            </motion.div>
+
           </motion.div>
         ) : (
           <motion.div

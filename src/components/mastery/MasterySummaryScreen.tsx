@@ -34,7 +34,7 @@ export function MasterySummaryScreen({ onRestart, onNewQuestion }: MasterySummar
         <div className="w-20 h-20 mx-auto mb-3 rounded-full bg-gradient-hero shadow-glow flex items-center justify-center">
           <Trophy className="w-10 h-10 text-primary-foreground" />
         </div>
-        <h1 className="text-3xl font-bold text-foreground mb-1">🎉 <Translate>Learning Complete!</Translate></h1>
+        <h1 className="text-3xl font-bold text-foreground mb-1"> <Translate>Learning Complete!</Translate></h1>
         <p className="text-base text-muted-foreground"><Translate>{`You've mastered the basics of ${currentScenario.topic}`}</Translate></p>
       </motion.div>
 

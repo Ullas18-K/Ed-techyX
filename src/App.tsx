@@ -13,6 +13,7 @@ import QuizPage from "./pages/QuizPage";
 import ReflectionPage from "./pages/ReflectionPage";
 import MasteryPage from "./pages/MasteryPage";
 import NotFound from "./pages/NotFound";
+import OpticsPuzzle from "./pages/gamified/OpticsPuzzle";
 import { toast } from "sonner";
 
 const queryClient = new QueryClient();
@@ -20,13 +21,15 @@ const queryClient = new QueryClient();
 // Protected Route wrapper
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated } = useAuthStore();
-  
+
   if (!isAuthenticated) {
     return <LoginScreen onSuccess={() => toast.success('Welcome to AI Learning Forge!')} />;
   }
-  
+
   return <>{children}</>;
 };
+
+import { StudyRoomManager } from "@/components/studyroom/StudyRoomManager";
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -34,7 +37,9 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
+        <StudyRoomManager />
         <Routes>
+          <Route path="/optics-puzzle" element={<ProtectedRoute><OpticsPuzzle /></ProtectedRoute>} />
           <Route path="/" element={<ProtectedRoute><HomePage /></ProtectedRoute>} />
           <Route path="/plan" element={<ProtectedRoute><LearningPlanPage /></ProtectedRoute>} />
           <Route path="/optics" element={<ProtectedRoute><OpticsPage /></ProtectedRoute>} />

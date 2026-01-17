@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -16,6 +16,7 @@ import 'katex/dist/katex.min.css';
 import { SimulationAIBot } from './SimulationAIBot';
 
 import { Translate } from '@/components/Translate';
+import { StudyWithOthersButton } from '@/components/studyroom/StudyWithOthersButton';
 
 import { TextToSpeech } from './TextToSpeech';
 
@@ -82,6 +83,7 @@ export function SimulationScreen({ onComplete }: SimulationScreenProps) {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <StudyWithOthersButton />
           <Button
             variant="ghost"
             size="sm"
@@ -384,7 +386,7 @@ export function SimulationScreen({ onComplete }: SimulationScreenProps) {
                           <img
                             src={question.imageUrl}
                             alt={question.imageDescription || 'Question diagram'}
-                            className="max-w-full h-auto rounded-lg border border-border/50"
+                            className="max-width: 100%; height: auto; rounded-lg; border: 1px solid rgba(var(--border), 0.5)"
                           />
                           {question.imageDescription && (
                             <p className="text-xs text-muted-foreground mt-1 italic">
