@@ -90,11 +90,11 @@ export function InputMethods({ onSubmit }: InputMethodsProps) {
       initial={{ opacity: 0, y: 30 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.4 }}
-      className="w-full max-w-3xl mx-auto"
+      className="w-full max-w-2xl mx-auto my-0"
     >
       {/* Main input container - premium glass effect */}
       <div className={cn(
-        "relative glass-panel rounded-3xl overflow-hidden transition-all duration-500",
+        "relative glass-panel rounded-2xl overflow-hidden transition-all duration-500",
         isFocused && "ring-2 ring-primary/20 shadow-glow"
       )}>
         {/* Top shine effect */}
@@ -137,7 +137,7 @@ export function InputMethods({ onSubmit }: InputMethodsProps) {
         </AnimatePresence>
 
         {/* Text input area */}
-        <div className="p-6">
+        <div className="p-4">
           <textarea
             ref={textareaRef}
             value={question}
@@ -146,7 +146,7 @@ export function InputMethods({ onSubmit }: InputMethodsProps) {
             onFocus={() => setIsFocused(true)}
             onBlur={() => setIsFocused(false)}
             placeholder="Type your question here... (e.g., Why is photosynthesis important?)"
-            className="w-full resize-none bg-transparent text-foreground placeholder:text-muted-foreground/50 focus:outline-none text-lg leading-relaxed"
+            className="w-full resize-none bg-transparent text-foreground placeholder:text-muted-foreground/50 focus:outline-none text-base leading-relaxed"
             rows={1}
           />
         </div>
@@ -189,7 +189,7 @@ export function InputMethods({ onSubmit }: InputMethodsProps) {
         </AnimatePresence>
 
         {/* Action buttons */}
-        <div className="flex items-center justify-between px-6 pb-6">
+        <div className="flex items-center justify-between px-4 pb-4">
           <div className="flex items-center gap-2">
             {/* Voice input button */}
             <Button
@@ -197,14 +197,14 @@ export function InputMethods({ onSubmit }: InputMethodsProps) {
               size="icon-lg"
               onClick={handleVoiceClick}
               className={cn(
-                "rounded-xl",
+                "rounded-lg",
                 isRecording && "animate-pulse"
               )}
             >
               {isRecording ? (
-                <MicOff className="w-5 h-5" />
+                <MicOff className="w-4 h-4" />
               ) : (
-                <Mic className="w-5 h-5" />
+                <Mic className="w-4 h-4" />
               )}
             </Button>
 
@@ -213,9 +213,9 @@ export function InputMethods({ onSubmit }: InputMethodsProps) {
               variant="glass"
               size="icon-lg"
               onClick={() => fileInputRef.current?.click()}
-              className="rounded-xl"
+              className="rounded-lg"
             >
-              <Image className="w-5 h-5" />
+              <Image className="w-4 h-4" />
             </Button>
             <input
               ref={fileInputRef}
@@ -232,58 +232,16 @@ export function InputMethods({ onSubmit }: InputMethodsProps) {
             size="lg"
             onClick={handleSubmit}
             disabled={!question.trim()}
-            className="gap-2 group rounded-xl"
+            className="gap-2 group rounded-lg text-sm"
           >
             <Wand2 className="w-4 h-4 group-hover:rotate-12 transition-transform" />
-            <span>Generate Experience</span>
+            <span>Generate</span>
             <Send className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
           </Button>
         </div>
       </div>
 
-      {/* Sample questions - glass cards */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.6 }}
-        className="mt-8"
-      >
-        <p className="text-sm text-muted-foreground text-center mb-4">Try these questions:</p>
-        <div className="flex flex-wrap gap-3 justify-center">
-          {sampleQuestions.slice(0, 3).map((q, i) => (
-            <motion.button
-              key={i}
-              whileHover={{ scale: 1.02, y: -2 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => setQuestion(q)}
-              className="px-5 py-3 text-sm glass-card hover:shadow-medium rounded-xl text-muted-foreground hover:text-foreground transition-all duration-300"
-            >
-              {q}
-            </motion.button>
-          ))}
-        </div>
-      </motion.div>
 
-      {/* Features hint */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.8 }}
-        className="flex items-center justify-center gap-8 mt-10"
-      >
-        {[
-          { icon: Mic, label: 'Voice input', color: 'text-primary' },
-          { icon: Upload, label: 'Image upload', color: 'text-primary' },
-          { icon: Sparkles, label: 'AI-powered', color: 'text-accent' },
-        ].map(({ icon: Icon, label, color }) => (
-          <div key={label} className="flex items-center gap-2 text-sm text-muted-foreground">
-            <div className="p-2 rounded-xl glass-card">
-              <Icon className={cn("w-4 h-4", color)} />
-            </div>
-            <span>{label}</span>
-          </div>
-        ))}
-      </motion.div>
     </motion.div>
   );
 }

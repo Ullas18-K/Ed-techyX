@@ -30,17 +30,15 @@ export function HeroSection() {
   ];
 
   return (
-    <div className="relative text-center w-full py-8 md:py-12 lg:py-16">
+    <div className="relative text-center w-full py-2 md:py-3">
       {/* Ambient orbs are now in the main page background */}
-
-
 
       {/* AI Badge - glass pill */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1, duration: 0.5 }}
-        className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full glass-card mb-8"
+        className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full glass-card mb-4"
         layout={false}
         style={{ willChange: 'opacity, transform' }}
       >
@@ -63,7 +61,7 @@ export function HeroSection() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.15, duration: 0.5 }}
-        className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 tracking-tight"
+        className="text-3xl md:text-5xl lg:text-6xl font-bold mb-2 tracking-tight"
         layout={false}
         style={{ willChange: 'opacity, transform' }}
       >
@@ -75,7 +73,7 @@ export function HeroSection() {
           </span>
           {displayedText.length < fullText.length && (
             <motion.span 
-              className="inline-block w-1 h-12 md:h-20 lg:h-24 ml-1 bg-primary rounded-sm"
+              className="inline-block w-1 h-8 md:h-12 lg:h-16 ml-1 bg-primary rounded-sm"
               animate={{ opacity: [1, 0] }}
               transition={{ duration: 0.7, repeat: Infinity }}
             />
@@ -88,7 +86,7 @@ export function HeroSection() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2, duration: 0.5 }}
-        className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed"
+        className="text-sm md:text-base text-muted-foreground max-w-2xl mx-auto leading-relaxed mb-2"
         layout={false}
         style={{ willChange: 'opacity, transform' }}
       >
@@ -100,21 +98,21 @@ export function HeroSection() {
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ delay: 0.35, duration: 0.5 }}
-        className="flex items-center justify-center gap-3 mt-10 flex-wrap"
+        className="flex items-center justify-center gap-2 mt-4 flex-wrap"
         layout={false}
         style={{ willChange: 'opacity, transform' }}
       >
         {['Ask', 'Explore', 'Simulate', 'Master'].map((step, index) => (
           <motion.div
             key={step}
-            className="flex items-center gap-3"
+            className="flex items-center gap-2"
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 1.2 + index * 0.4, duration: 0.6, ease: "easeOut" }}
             layout={false}
           >
             <motion.span 
-              className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                 index === 3 
                   ? 'glass-card border-primary/40 text-primary glow-subtle' 
                   : 'glass-subtle text-muted-foreground hover:text-foreground hover:glass-card'
@@ -127,7 +125,7 @@ export function HeroSection() {
             </motion.span>
             {index < 3 && (
               <motion.span 
-                className="text-primary/40 font-light text-xl"
+                className="text-primary/40 font-light"
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 1.5 + index * 0.4, duration: 0.5 }}

@@ -13,7 +13,8 @@ html {
 
 body {
   contain: layout style;
-  overflow-x: hidden;
+  overflow: hidden;
+  height: 100vh;
 }
 
 /* Optimize scrolling performance */

@@ -43,7 +43,7 @@ export function ExplanationScreen({ onComplete }: ExplanationScreenProps) {
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="max-w-4xl mx-auto p-4"
+      className="w-full max-w-6xl mx-auto px-4 py-8 min-h-screen flex flex-col"
     >
       {/* Header */}
       <motion.div

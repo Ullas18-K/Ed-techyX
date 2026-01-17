@@ -3,9 +3,6 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Navbar } from '@/components/Navbar';
 import { HeroSection } from '@/components/home/HeroSection';
 import { InputMethods } from '@/components/home/InputMethods';
-import { SubjectGrid } from '@/components/home/SubjectGrid';
-import { HistoryPanel } from '@/components/history/HistoryPanel';
-import { LeaderboardPanel } from '@/components/leaderboard/LeaderboardPanel';
 import { AIThinkingScreen } from '@/components/thinking/AIThinkingScreen';
 import { LearningPlanScreen } from '@/components/plan/LearningPlanScreen';
 import { SimulationScreen } from '@/components/simulation/SimulationScreen';
@@ -173,6 +170,7 @@ const Index = () => {
         />
       </motion.div>
 
+      {/* Floating Navbar - Only on home phase */}
       {currentPhase === 'home' && (
         <Navbar
           onProfileClick={(anchor) => {
@@ -200,28 +198,14 @@ const Index = () => {
             initial="hidden"
             animate="visible"
             exit="exit"
-            className="flex-1 flex flex-col justify-center w-full relative z-10"
+            className="flex-1 flex flex-col justify-center w-full relative z-10 h-screen overflow-hidden"
             layout={false}
             style={{ willChange: 'opacity', contain: 'layout style' }}
           >
-            {/* Main Content with Side Panels */}
-            <div className="flex-1 flex flex-col lg:flex-row gap-6 px-4 py-4 mt-2 relative z-10 w-full" style={{ willChange: 'auto' }}>
-              {/* Left Panel - History */}
-              <motion.div
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.2, duration: 0.3 }}
-                className="w-full lg:w-80 flex-shrink-0 flex items-start"
-                layout={false}
-              >
-                <div style={{ height: '650px' }} className="w-full">
-                  <HistoryPanel />
-                </div>
-              </motion.div>
-
-              {/* Center Content */}
+            {/* Main Content - Centered and constrained to screen height */}
+            <div className="flex-1 flex flex-col justify-center items-center px-4 relative z-10 w-full overflow-y-auto" style={{ willChange: 'auto', maxHeight: 'calc(100vh - 80px)', paddingTop: '20px' }}>
               <motion.div 
-                className="flex-1 flex flex-col justify-center items-center"
+                className="flex-1 flex flex-col justify-center items-center max-w-4xl w-full gap-8"
                 variants={containerVariants}
                 initial="hidden"
                 animate="visible"
@@ -229,20 +213,6 @@ const Index = () => {
               >
                 <HeroSection />
                 <InputMethods onSubmit={handleQuestionSubmit} />
-                <SubjectGrid />
-              </motion.div>
-
-              {/* Right Panel - Leaderboard */}
-              <motion.div
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.2, duration: 0.3 }}
-                className="w-full lg:w-80 flex-shrink-0 flex items-start"
-                layout={false}
-              >
-                <div style={{ height: '650px' }} className="w-full">
-                  <LeaderboardPanel />
-                </div>
               </motion.div>
             </div>
           </motion.div>
@@ -300,7 +270,7 @@ const Index = () => {
             initial="hidden"
             animate="visible"
             exit="exit"
-            className="min-h-screen flex items-center justify-center py-12 relative z-10"
+            className="w-full overflow-y-auto relative z-10"
           >
             <motion.div
               variants={containerVariants}
@@ -320,7 +290,7 @@ const Index = () => {
             initial="hidden"
             animate="visible"
             exit="exit"
-            className="min-h-screen flex items-center justify-center py-12 relative z-10"
+            className="w-full overflow-y-auto relative z-10"
           >
             <motion.div
               variants={containerVariants}
@@ -340,7 +310,7 @@ const Index = () => {
             initial="hidden"
             animate="visible"
             exit="exit"
-            className="min-h-screen flex items-center justify-center py-12 relative z-10"
+            className="w-full overflow-y-auto relative z-10"
           >
             <motion.div
               variants={containerVariants}
@@ -360,7 +330,7 @@ const Index = () => {
             initial="hidden"
             animate="visible"
             exit="exit"
-            className="min-h-screen flex items-center justify-center py-12 relative z-10"
+            className="w-full overflow-y-auto relative z-10"
           >
             <motion.div
               variants={containerVariants}

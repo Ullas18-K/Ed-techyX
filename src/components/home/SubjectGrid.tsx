@@ -27,15 +27,15 @@ export function SubjectGrid() {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.8, duration: 0.6 }}
-      className="mt-20"
+      className="mt-6"
       layout={false}
       style={{ willChange: 'opacity, transform' }}
     >
-      <h2 className="text-center text-lg font-semibold text-foreground/80 mb-8">
+      <h2 className="text-center text-sm font-semibold text-foreground/80 mb-4">
         Supports All Subjects • Class 1–12
       </h2>
       
-      <div className="grid grid-cols-4 md:grid-cols-8 gap-4 max-w-4xl mx-auto">
+      <div className="grid grid-cols-4 md:grid-cols-8 gap-3 max-w-3xl mx-auto">
         {subjects.map((subject, index) => (
           <motion.div
             key={subject.name}
@@ -43,15 +43,15 @@ export function SubjectGrid() {
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: 0.85 + index * 0.02, duration: 0.4 }}
             whileHover={{ scale: 1.08, y: -4 }}
-            className="flex flex-col items-center gap-3 p-4 rounded-2xl glass-card hover:shadow-medium transition-all duration-300 cursor-pointer group"
+            className="flex flex-col items-center gap-2 p-3 rounded-xl glass-card hover:shadow-medium transition-all duration-300 cursor-pointer group"
             layout={false}
           >
             <div 
-              className="p-3 rounded-xl transition-all duration-300 group-hover:scale-110"
+              className="p-2 rounded-lg transition-all duration-300 group-hover:scale-110"
               style={{ backgroundColor: subject.bg }}
             >
               <subject.icon 
-                className="w-5 h-5 transition-all" 
+                className="w-4 h-4 transition-all" 
                 style={{ color: subject.color }}
               />
             </div>

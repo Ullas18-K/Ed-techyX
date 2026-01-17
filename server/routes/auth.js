@@ -1,12 +1,11 @@
 import express from 'express';
-import { body } from 'express-validator';
-import bcrypt from 'bcryptjs';
+import { body, validationResult } from 'express-validator';
+import bcryptjs from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
 import SimulationHistory from '../models/SimulationHistory.js';
 import SessionResult from '../models/SessionResult.js';
 import { authenticateToken } from '../middleware/auth.js';
-import { validationResult } from 'express-validator';
 
 const router = express.Router();
 
@@ -63,8 +62,8 @@ router.post('/register', registerValidation, async (req, res) => {
     }
 
     // Hash password
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
+    const salt = await bcryptjs.genSalt(10);
+    const hashedPassword = await bcryptjs.hash(password, salt);
 
     // Create new user
     const user = new User({
@@ -137,7 +136,7 @@ router.post('/login', loginValidation, async (req, res) => {
     }
 
     // Verify password
-    const isPasswordValid = await bcrypt.compare(password, user.password);
+    const isPasswordValid = await bcryptjs.compare(password, user.password);
     if (!isPasswordValid) {
       return res.status(401).json({
         success: false,

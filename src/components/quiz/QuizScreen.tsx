@@ -90,22 +90,22 @@ export function QuizScreen({ onComplete }: QuizScreenProps) {
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="max-w-2xl mx-auto p-4"
+      className="w-full max-w-6xl mx-auto px-3 py-3 flex flex-col gap-3"
     >
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="text-center mb-10"
+        className="text-center flex-shrink-0"
       >
-        <div className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full glass-card text-primary text-sm font-semibold mb-4">
-          <Trophy className="w-4 h-4" />
-          <span>Quiz Time</span>
+        <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full glass-card text-primary text-xs font-semibold mb-2">
+          <Trophy className="w-3 h-3" />
+          <span>Quiz</span>
         </div>
-        <h1 className="text-3xl font-bold text-foreground mb-3">
+        <h1 className="text-2xl font-bold text-foreground mb-2">
           Check Your Understanding
         </h1>
-        <p className="text-muted-foreground text-lg">
+        <p className="text-muted-foreground text-sm">
           Let's see what you've learned about {currentScenario.topic}
         </p>
       </motion.div>
@@ -115,24 +115,24 @@ export function QuizScreen({ onComplete }: QuizScreenProps) {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.1 }}
-        className="mb-8"
+        className="flex-shrink-0"
       >
-        <div className="flex items-center justify-between text-sm mb-3">
+        <div className="flex items-center justify-between text-xs mb-2">
           <span className="text-muted-foreground font-medium">
-            Question {currentQuizIndex + 1} of {questions.length}
+            Q{currentQuizIndex + 1}/{questions.length}
           </span>
           <span className="font-semibold text-success">
             {correctCount} correct
           </span>
         </div>
-        <div className="flex gap-1.5 p-1.5 glass-subtle rounded-full">
+        <div className="flex gap-1 p-1 glass-subtle rounded-full">
           {questions.map((_, index) => {
             const result = quizResults.find(r => r.questionId === questions[index].id);
             return (
               <div
                 key={index}
                 className={cn(
-                  "h-2 flex-1 rounded-full transition-all",
+                  "h-1.5 flex-1 rounded-full transition-all",
                   index === currentQuizIndex 
                     ? "bg-primary shadow-glow" 
                     : result 
@@ -154,22 +154,22 @@ export function QuizScreen({ onComplete }: QuizScreenProps) {
           initial={{ opacity: 0, x: 50 }}
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: -50 }}
-          className="glass-panel rounded-3xl p-6 mb-6"
+          className="glass-panel rounded-2xl p-4 flex-shrink-0"
         >
           {/* Question type badge */}
-          <div className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full glass-subtle text-muted-foreground text-xs font-semibold mb-4">
-            {currentQuestion.type === 'mcq' && 'Multiple Choice'}
-            {currentQuestion.type === 'truefalse' && 'True or False'}
-            {currentQuestion.type === 'predict' && 'Predict the Outcome'}
+          <div className="inline-flex items-center gap-0.5 px-2 py-1 rounded-full glass-subtle text-muted-foreground text-xs font-semibold mb-2">
+            {currentQuestion.type === 'mcq' && 'MCQ'}
+            {currentQuestion.type === 'truefalse' && 'T/F'}
+            {currentQuestion.type === 'predict' && 'Predict'}
           </div>
 
           {/* Question text */}
-          <h2 className="text-xl font-bold text-foreground mb-6">
+          <h2 className="text-base font-bold text-foreground mb-3">
             {currentQuestion.question}
           </h2>
 
           {/* Options */}
-          <div className="space-y-3">
+          <div className="space-y-2">
             {currentQuestion.options?.map((option, index) => {
               const isSelected = selectedAnswer === index;
               // Handle both numeric index and letter-based correct answer
@@ -190,7 +190,7 @@ export function QuizScreen({ onComplete }: QuizScreenProps) {
                   onClick={() => handleAnswerSelect(index)}
                   disabled={showFeedback}
                   className={cn(
-                    "w-full text-left p-4 rounded-2xl border-2 transition-all glass-subtle",
+                    "w-full text-left p-3 rounded-xl border-2 transition-all glass-subtle",
                     !showFeedback && isSelected && "border-primary bg-primary/5 glass-card",
                     !showFeedback && !isSelected && "border-transparent hover:border-primary/30 hover:glass-card",
                     showFeedback && isCorrect && "border-success bg-success/10",
@@ -198,10 +198,10 @@ export function QuizScreen({ onComplete }: QuizScreenProps) {
                     showFeedback && !isCorrect && !isSelected && "border-transparent opacity-50"
                   )}
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
                     {/* Option indicator */}
                     <div className={cn(
-                      "w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold transition-colors",
+                      "w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold transition-colors flex-shrink-0",
                       !showFeedback && isSelected && "bg-primary text-primary-foreground",
                       !showFeedback && !isSelected && "bg-muted text-muted-foreground",
                       showFeedback && isCorrect && "bg-success text-success-foreground",
@@ -209,9 +209,9 @@ export function QuizScreen({ onComplete }: QuizScreenProps) {
                       showFeedback && !isCorrect && !isSelected && "bg-muted text-muted-foreground"
                     )}>
                       {showCorrectness && isCorrect ? (
-                        <CheckCircle2 className="w-5 h-5" />
+                        <CheckCircle2 className="w-4 h-4" />
                       ) : showCorrectness && isSelected && !isCorrect ? (
-                        <XCircle className="w-5 h-5" />
+                        <XCircle className="w-4 h-4" />
                       ) : (
                         String.fromCharCode(65 + index)
                       )}
@@ -219,7 +219,7 @@ export function QuizScreen({ onComplete }: QuizScreenProps) {
 
                     {/* Option text */}
                     <span className={cn(
-                      "flex-1 text-foreground font-medium",
+                      "flex-1 text-foreground font-medium text-sm",
                       showFeedback && !isCorrect && !isSelected && "text-muted-foreground"
                     )}>
                       {option}
@@ -236,44 +236,44 @@ export function QuizScreen({ onComplete }: QuizScreenProps) {
       <AnimatePresence>
         {showFeedback && (
           <motion.div
-            initial={{ opacity: 0, y: 20, height: 0 }}
+            initial={{ opacity: 0, y: 10, height: 0 }}
             animate={{ opacity: 1, y: 0, height: 'auto' }}
-            exit={{ opacity: 0, y: 20, height: 0 }}
-            className="mb-6"
+            exit={{ opacity: 0, y: 10, height: 0 }}
+            className="flex-shrink-0"
           >
             <div className={cn(
-              "p-5 rounded-2xl glass-card",
+              "p-3 rounded-xl glass-card text-sm",
               currentResult?.correct 
-                ? "border-success/30" 
-                : "border-destructive/30"
+                ? "border border-success/30" 
+                : "border border-destructive/30"
             )}>
-              <div className="flex items-center gap-2 mb-3">
+              <div className="flex items-center gap-1.5 mb-2">
                 {currentResult?.correct ? (
                   <>
-                    <div className="p-1.5 rounded-lg bg-success/10">
-                      <CheckCircle2 className="w-5 h-5 text-success" />
+                    <div className="p-1 rounded-lg bg-success/10">
+                      <CheckCircle2 className="w-4 h-4 text-success" />
                     </div>
-                    <span className="font-bold text-success">Correct!</span>
+                    <span className="font-bold text-success text-xs">Correct!</span>
                   </>
                 ) : (
                   <>
-                    <div className="p-1.5 rounded-lg bg-destructive/10">
-                      <XCircle className="w-5 h-5 text-destructive" />
+                    <div className="p-1 rounded-lg bg-destructive/10">
+                      <XCircle className="w-4 h-4 text-destructive" />
                     </div>
-                    <span className="font-bold text-destructive">Not quite right</span>
+                    <span className="font-bold text-destructive text-xs">Not quite right</span>
                   </>
                 )}
               </div>
-              <p className="text-foreground/80 text-sm">
+              <p className="text-foreground/80 text-xs mb-2">
                 {currentQuestion.explanation}
               </p>
               
               {/* Misconception warning */}
               {!currentResult?.correct && currentQuestion.misconception && (
-                <div className="mt-4 p-4 glass-subtle rounded-xl border border-warning/30">
-                  <div className="flex items-center gap-2 mb-2">
-                    <AlertTriangle className="w-4 h-4 text-warning" />
-                    <span className="text-sm font-bold text-warning">Common Misconception</span>
+                <div className="mt-2 p-2 glass-subtle rounded-lg border border-warning/30">
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <AlertTriangle className="w-3 h-3 text-warning" />
+                    <span className="text-xs font-bold text-warning">Misconception</span>
                   </div>
                   <p className="text-xs text-foreground/70">
                     {currentQuestion.misconception}
@@ -290,28 +290,28 @@ export function QuizScreen({ onComplete }: QuizScreenProps) {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.2 }}
-        className="flex justify-center gap-4"
+        className="flex justify-center gap-3 flex-shrink-0"
       >
         {!showFeedback ? (
           <Button
             variant="hero"
-            size="lg"
+            size="sm"
             onClick={handleSubmitAnswer}
             disabled={selectedAnswer === null}
-            className="gap-2 rounded-xl"
+            className="gap-1.5 rounded-lg text-xs"
           >
-            <span>Submit Answer</span>
-            <ChevronRight className="w-4 h-4" />
+            <span>Submit</span>
+            <ChevronRight className="w-3 h-3" />
           </Button>
         ) : (
           <Button
             variant="hero"
-            size="lg"
+            size="sm"
             onClick={handleNextQuestion}
-            className="gap-2 rounded-xl"
+            className="gap-1.5 rounded-lg text-xs"
           >
-            <span>{isLastQuestion ? 'View Results' : 'Next Question'}</span>
-            <ArrowRight className="w-4 h-4" />
+            <span>{isLastQuestion ? 'Results' : 'Next'}</span>
+            <ArrowRight className="w-3 h-3" />
           </Button>
         )}
       </motion.div>
@@ -321,12 +321,12 @@ export function QuizScreen({ onComplete }: QuizScreenProps) {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.3 }}
-        className="mt-8 text-center"
+        className="text-center flex-shrink-0"
       >
-        <div className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full glass-card text-accent">
-          <Sparkles className="w-4 h-4" />
-          <span className="text-sm font-semibold">
-            +{currentResult?.correct ? 20 : 0} points this question
+        <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full glass-card text-accent text-xs">
+          <Sparkles className="w-3 h-3" />
+          <span className="text-xs font-semibold">
+            +{currentResult?.correct ? 20 : 0} pts
           </span>
         </div>
       </motion.div>
