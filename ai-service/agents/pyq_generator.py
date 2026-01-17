@@ -219,12 +219,18 @@ REQUIREMENTS:
 3. Each question must have a clear, educational answer
 4. Focus on conceptual understanding, not rote memorization
 5. Use proper scientific terminology
+6. FORMATTING: Use Markdown significantly:
+   - Use **bold** for key scientific terms and concepts.
+   - Use *italics* for emphasis.
+   - Use `code blocks` for formulas if applicable.
+   - For complex answers, use a **Step-by-step Explanation** structure inside the answer field.
+   - Use bullet points or numbered lists where appropriate for clarity.
 
 OUTPUT FORMAT (valid JSON array):
 [
   {{
     "questionText": "Clear, specific question about {topic}",
-    "answer": "Detailed answer with explanation (3-5 sentences minimum)",
+    "answer": "Detailed answer with Markdown formatting. Use a step-by-step structure for explanations (e.g., Step 1: ..., Step 2: ...).",
     "difficulty": "easy/medium/hard",
     "marks": 2 or 3 or 5
   }}
@@ -366,15 +372,19 @@ TOPIC: {question.topic}
 
 Please provide:
 1. A COMPREHENSIVE ANSWER that is clear and educational (3-5 sentences minimum)
-2. A step-by-step EXPLANATION if needed
-3. Use proper scientific terminology
+2. A step-by-step EXPLANATION structured with clear headings or numbered steps.
+3. FORMATTING: Use Markdown significantly:
+   - Use **bold** for key terms.
+   - Use *italics* for emphasis.
+   - Use `code blocks` or LateX format for formulas.
+   - Use bullet points or numbered lists for readability.
 4. Reference NCERT concepts where applicable
 5. Include relevant formulas or key points if applicable
 6. If image was mentioned, describe how it relates to the concept
 
 Format your response as:
-ANSWER: [Your comprehensive answer]
-EXPLANATION: [Step-by-step explanation if needed]"""
+ANSWER: [Your comprehensive answer with Markdown]
+EXPLANATION: [Step-by-step explanation with Markdown and clear structure]"""
 
                 # Call Gemini
                 response = self.model.generate_content(prompt)  # type: ignore

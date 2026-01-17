@@ -122,9 +122,15 @@ export function SimulationScreen({ onComplete }: SimulationScreenProps) {
 =======
               <div className="flex-1">
                 <div className="flex items-center justify-between mb-2">
+<<<<<<< HEAD
                   <h3 className="font-semibold text-foreground">Welcome!</h3>
                   <TextToSpeech 
                     text={aiScenarioData.greeting} 
+=======
+                  <h3 className="font-semibold text-foreground"><Translate>Welcome!</Translate></h3>
+                  <TextToSpeech
+                    text={aiScenarioData.greeting}
+>>>>>>> 7ddcdce (Enhanced PYQ section)
                     autoPlay={true}
                   />
                 </div>
@@ -196,7 +202,7 @@ export function SimulationScreen({ onComplete }: SimulationScreenProps) {
                     </div>
                     <div className="flex items-center gap-1">
                       <div onClick={(e) => e.stopPropagation()}>
-                        <TextToSpeech 
+                        <TextToSpeech
                           text={`${concept.description}. ${concept.details}`}
                         />
                       </div>
@@ -430,34 +436,68 @@ export function SimulationScreen({ onComplete }: SimulationScreenProps) {
                             transition={{ duration: 0.2 }}
                             className="overflow-hidden"
                           >
-                            <div className="mt-3 pt-3 border-t border-border/50 space-y-2">
-                              {/* Answer */}
+                            <div className="mt-4 pt-4 border-t border-border/50 space-y-4">
+                              {/* Answer Section */}
                               {question.answer && (
-                                <div>
-                                  <h5 className="text-xs font-semibold text-primary mb-1">Answer:</h5>
-                                  <p className="text-sm text-foreground bg-success/5 p-2 rounded">
-                                    {question.answer}
-                                  </p>
-                                </div>
+                                <motion.div
+                                  initial={{ opacity: 0, y: 10 }}
+                                  animate={{ opacity: 1, y: 0 }}
+                                  className="glass-card rounded-xl p-4 border-l-4 border-l-success"
+                                >
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <div className="p-1.5 rounded-lg bg-success/10 text-success">
+                                      <CheckCircle2 className="w-4 h-4" />
+                                    </div>
+                                    <h5 className="text-sm font-bold text-foreground">Core Answer</h5>
+                                  </div>
+                                  <div className="prose prose-sm prose-invert max-w-none text-foreground prose-p:leading-relaxed prose-strong:text-success prose-strong:font-bold">
+                                    <ReactMarkdown
+                                      remarkPlugins={[remarkMath]}
+                                      rehypePlugins={[rehypeKatex]}
+                                    >
+                                      {question.answer}
+                                    </ReactMarkdown>
+                                  </div>
+                                </motion.div>
                               )}
 
-                              {/* Explanation */}
+                              {/* Explanation Section */}
                               {question.answerExplanation && (
-                                <div>
-                                  <h5 className="text-xs font-semibold text-primary mb-1">Explanation:</h5>
-                                  <p className="text-sm text-muted-foreground bg-accent/20 p-2 rounded leading-relaxed">
-                                    {question.answerExplanation}
-                                  </p>
-                                </div>
+                                <motion.div
+                                  initial={{ opacity: 0, y: 10 }}
+                                  animate={{ opacity: 1, y: 0 }}
+                                  transition={{ delay: 0.1 }}
+                                  className="glass-card rounded-xl p-4 border-l-4 border-l-primary"
+                                >
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <div className="p-1.5 rounded-lg bg-primary/10 text-primary">
+                                      <Lightbulb className="w-4 h-4" />
+                                    </div>
+                                    <h5 className="text-sm font-bold text-foreground">Step-by-Step Explanation</h5>
+                                  </div>
+                                  <div className="prose prose-sm prose-invert max-w-none text-muted-foreground prose-p:leading-relaxed prose-headings:text-foreground prose-headings:text-sm prose-headings:font-bold prose-ol:list-decimal prose-ul:list-disc">
+                                    <ReactMarkdown
+                                      remarkPlugins={[remarkMath]}
+                                      rehypePlugins={[rehypeKatex]}
+                                    >
+                                      {question.answerExplanation}
+                                    </ReactMarkdown>
+                                  </div>
+                                </motion.div>
                               )}
 
-                              {/* Page Reference */}
-                              {question.pageNumber && (
-                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                  <BookOpen className="w-3 h-3" />
-                                  <span>NCERT Page {question.pageNumber}</span>
+                              {/* Footer Info */}
+                              <div className="flex items-center justify-between px-1">
+                                {question.pageNumber && (
+                                  <div className="flex items-center gap-2 text-[10px] font-medium text-muted-foreground bg-accent/30 px-2 py-1 rounded-full border border-border/50">
+                                    <BookOpen className="w-3 h-3" />
+                                    <span>NCERT Page {question.pageNumber}</span>
+                                  </div>
+                                )}
+                                <div className="text-[10px] text-muted-foreground italic">
+                                  Verified by AI Assistant
                                 </div>
-                              )}
+                              </div>
                             </div>
                           </motion.div>
                         )}
