@@ -13,6 +13,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
+import { SimulationAIBot } from './SimulationAIBot';
 
 interface SimulationScreenProps {
   onComplete: () => void;
@@ -436,6 +437,21 @@ export function SimulationScreen({ onComplete }: SimulationScreenProps) {
           </motion.div>
         </div>
       </div>
+
+      {/* AI Chatbot - Floating bottom-right */}
+      {aiScenarioData && currentScenario && (
+        <SimulationAIBot
+          scenarioId={aiScenarioData.scenarioId}
+          currentTaskId={1}
+          context={{
+            greeting: aiScenarioData.greeting,
+            scenario: aiScenarioData.scenarioDescription,
+            concepts: aiScenarioData.keyConcepts,
+            simulationConfig: aiScenarioData.simulationConfig,
+            learningObjectives: aiScenarioData.learningObjectives
+          }}
+        />
+      )}
     </motion.div>
   );
 }

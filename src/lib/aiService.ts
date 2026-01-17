@@ -80,13 +80,9 @@ export interface RAGSource {
 
 export interface AIConversationResponse {
   response: string;
-  action: 'continue' | 'hint' | 'encourage' | 'complete_task' | 'next_task';
+  action: string; // 'continue' | 'next_task' | 'hint' | 'repeat'
   task_complete: boolean;
   next_task_id?: number;
-  rag_used?: boolean;
-  rag_sources?: RAGSource[];
-  confidence?: number;
-  follow_up_suggestions?: string[];
 }
 
 export interface PYQQuestion {
@@ -202,9 +198,7 @@ export async function getAIGuidance(
     return {
       response: "Keep exploring! I'm here to help when you're ready.",
       action: 'continue',
-      task_complete: false,
-      rag_used: false,
-      confidence: 0.5
+      task_complete: false
     };
   }
 }

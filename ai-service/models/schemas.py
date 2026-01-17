@@ -132,12 +132,24 @@ class RAGSource(BaseModel):
     page: Optional[str] = ""
     excerpt: str = ""
 
+# class ConversationResponse(BaseModel):
+#     response: str
+#     action: str  # "continue", "next_task", "hint", "repeat"
+#     task_complete: bool = False
+#     next_task_id: Optional[int] = None
+
 class ConversationResponse(BaseModel):
     response: str
-    action: str  # "continue", "next_task", "hint", "repeat"
+    action: str
     task_complete: bool = False
     next_task_id: Optional[int] = None
 
+    # --- RAG + Tutor metadata ---
+    rag_used: bool = False
+    rag_sources: Optional[List[RAGSource]] = None
+    confidence: Optional[float] = None
+    follow_up_suggestions: Optional[List[str]] = None
+    
 class QuizResponse(BaseModel):
     quiz_id: str
     questions: List[QuizQuestion]

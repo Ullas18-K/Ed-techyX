@@ -42,9 +42,7 @@ export function AIContextChat({ scenarioId, currentTaskId, context, onTaskComple
       id: '1',
       role: 'ai',
       content: context.greeting || "Hi! I'm your AI learning assistant powered by Google Gemini and NCERT content. 🌟 Ask me anything about what you're learning, or tell me what you're observing in the simulation!",
-      timestamp: new Date(),
-      rag_used: false,
-      confidence: 1.0
+      timestamp: new Date()
     }
   ]);
   const [input, setInput] = useState('');
@@ -98,11 +96,7 @@ export function AIContextChat({ scenarioId, currentTaskId, context, onTaskComple
         role: 'ai',
         content: response.response,
         timestamp: new Date(),
-        rag_used: response.rag_used || false,
-        rag_sources: response.rag_sources || [],
-        confidence: response.confidence || 0.5,
-        follow_up_suggestions: response.follow_up_suggestions || [],
-        action: response.action || 'answer'
+        action: response.action
       };
 
       setMessages(prev => [...prev, aiMessage]);
@@ -122,8 +116,6 @@ export function AIContextChat({ scenarioId, currentTaskId, context, onTaskComple
         role: 'ai',
         content: "I'm having trouble connecting right now. Could you try asking that again? 🔄",
         timestamp: new Date(),
-        rag_used: false,
-        confidence: 0.0,
         action: 'error'
       };
       setMessages(prev => [...prev, errorMessage]);
