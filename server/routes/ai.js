@@ -49,15 +49,7 @@ router.post('/scenario/generate', authenticateToken, scenarioValidation, async (
       student_id: req.user._id.toString(),
       difficulty: difficulty || 'medium'
     }, {
-<<<<<<< HEAD
-<<<<<<< HEAD
       timeout: 300000 // 300 second timeout (5 minutes)
-=======
-      timeout: 300000 // 120 second timeout (2 minutes)
->>>>>>> 94ad479 (translation added)
-=======
-      timeout: 300000 // 300 second timeout (5 minutes)
->>>>>>> 6091495 (implemented cloud TTS)
     });
 
     console.log(`✅ AI Service: Scenario generated successfully - ${response.data.scenarioId || 'unknown'}`);
