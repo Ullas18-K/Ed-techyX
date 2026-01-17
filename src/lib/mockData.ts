@@ -15,6 +15,8 @@ export interface LearningScenario {
   quiz: QuizQuestion[];
   reflections: string[];
   examConnection: ExamConnection;
+  formulas?: string[];
+  notes?: string;
 }
 
 export interface SimulationConfig {
@@ -36,6 +38,7 @@ export interface SimulationControl {
   step?: number;
   default: number | boolean | string;
   unit?: string;
+  options?: string[]; // For dropdown/select controls
 }
 
 export interface SimulationOutput {
@@ -163,11 +166,11 @@ export const learningScenarios: Record<string, LearningScenario> = {
         { id: 'sugar', label: 'Sugar Production', unit: 'mg/hr', color: 'warning' },
       ],
       tasks: [
-        'Identify the inputs needed for photosynthesis',
-        'Set optimal conditions for the plant',
-        'Run the experiment and observe results',
-        'Record what happens when you reduce sunlight',
-        'Explain why the plant needs CO₂',
+        // 'Identify the inputs needed for photosynthesis',
+        // 'Set optimal conditions for the plant',
+        // 'Run the experiment and observe results',
+        // 'Record what happens when you reduce sunlight',
+        // 'Explain why the plant needs CO₂',
       ],
       tutorMessages: [
         { trigger: 'start', message: 'Welcome to the Plant Lab! Let\'s discover how plants make their own food. What do you think plants need to survive?' },

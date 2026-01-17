@@ -2,6 +2,7 @@
 import { create } from 'zustand';
 import { LearningScenario, findScenarioForQuestion } from './mockData';
 import { toast } from 'sonner';
+import { generateAIScenario, AIScenarioResponse } from './aiService';
 
 interface StudyNote {
   id: string;
@@ -36,6 +37,8 @@ interface LearningState {
   currentQuestion: string;
   currentScenario: LearningScenario | null;
   currentPhase: 'home' | 'thinking' | 'plan' | 'simulation' | 'explanation' | 'quiz' | 'reflection' | 'mastery';
+  isAIGenerated: boolean;
+  aiScenarioData: AIScenarioResponse | null;
   
   // Simulation state
   simulationValues: Record<string, number | boolean | string>;
@@ -60,6 +63,7 @@ interface LearningState {
   
   // Actions
   setQuestion: (question: string) => void;
+  setAIScenario: (topic: string, token: string) => Promise<void>;
   startLearning: () => void;
   setPhase: (phase: LearningState['currentPhase']) => void;
   updateSimulationValue: (id: string, value: number | boolean | string) => void;
@@ -80,6 +84,8 @@ export const useLearningStore = create<LearningState>((set, get) => ({
   currentQuestion: '',
   currentScenario: null,
   currentPhase: 'home',
+  isAIGenerated: false,
+  aiScenarioData: null,
   simulationValues: {},
   simulationResults: {},
   completedTasks: [],
@@ -106,6 +112,8 @@ export const useLearningStore = create<LearningState>((set, get) => ({
     set({
       currentQuestion: question,
       currentScenario: scenario,
+      isAIGenerated: false,
+      aiScenarioData: null,
       simulationValues: defaultValues,
       simulationResults: {},
       completedTasks: [],
@@ -117,6 +125,150 @@ export const useLearningStore = create<LearningState>((set, get) => ({
       currentQuizIndex: 0,
       reflectionAnswers: {},
     });
+  },
+
+  setAIScenario: async (topic: string, token: string) => {
+    try {
+      const aiData = await generateAIScenario(topic, token);
+      
+      console.log('🔄 Converting AI scenario data...');
+      console.log('📦 Full AI Data received:', JSON.stringify(aiData, null, 2));
+      console.log('📋 Scenario Description:', aiData.scenarioDescription);
+      console.log('💡 Key Concepts:', aiData.keyConcepts);
+      console.log('🎯 Learning Objectives:', aiData.learningObjectives);
+      
+      // Convert AI response to LearningScenario format
+      const scenario: LearningScenario = {
+        id: aiData.scenarioId,
+        topic: aiData.title,
+        subject: aiData.subject,
+        level: `Class ${aiData.gradeLevel}`,
+        learningStyle: 'AI-Powered Interactive',
+        estimatedTime: aiData.estimatedDuration,
+        scenario: aiData.scenarioDescription,
+        concepts: aiData.keyConcepts.map(kc => kc.description),
+        objectives: aiData.learningObjectives.map(lo => lo.description),
+        simulation: {
+          type: aiData.simulationConfig.type as any,
+          title: aiData.simulationConfig.title,
+          description: aiData.simulationConfig.description,
+          controls: aiData.simulationConfig.controls.map(ctrl => {
+            const isDropdown = ctrl.controlType === 'dropdown';
+            const control: any = {
+              id: ctrl.name,
+              label: ctrl.label,
+              type: isDropdown ? 'select' : 'slider',
+              unit: ctrl.unit || ''
+            };
+            
+            if (isDropdown) {
+              control.options = ctrl.options || [];
+              control.default = ctrl.default || ctrl.options?.[0] || '';
+            } else {
+              control.min = ctrl.min ?? 0;
+              control.max = ctrl.max ?? 100;
+              control.step = ctrl.step ?? 1;
+              control.default = ctrl.default ?? ctrl.min ?? 0;
+            }
+            
+            return control;
+          }),
+          outputs: aiData.simulationConfig.outputs.map((out, i) => ({
+            id: out,
+            label: out.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+            unit: '',
+            color: ['success', 'info', 'warning'][i % 3]
+          })),
+          tasks: aiData.tasks.map(t => t.instruction),
+          tutorMessages: []
+        },
+        explanations: [{
+          title: 'AI Generated Explanation',
+          type: 'step-by-step',
+          content: aiData.notes
+        }],
+        quiz: aiData.quiz.map((q, i) => {
+          console.log(`📝 Mapping quiz question ${i}:`, {
+            question: q.question,
+            optionsCount: q.options?.length,
+            correctAnswer: q.correctAnswer
+          });
+          return {
+            id: `q${i}`,
+            type: 'mcq',
+            question: q.question,
+            options: q.options,
+            correctAnswer: q.correctAnswer,
+            explanation: q.explanation
+          };
+        }),
+        reflections: [
+          "What was the most surprising thing you learned?",
+          "How would you explain this to a friend?",
+          "What real-world applications can you think of?"
+        ],
+        examConnection: {
+          ncertChapter: aiData.ncertChapter,
+          boardRelevance: `Pages: ${aiData.ncertPageRefs.join(', ')}`,
+          competitiveExams: []
+        },
+        formulas: aiData.formulas || [],
+        notes: aiData.notes || ''
+      };
+
+      const defaultValues: Record<string, number | boolean | string> = {};
+      scenario.simulation.controls.forEach(control => {
+        defaultValues[control.id] = control.default;
+      });
+
+      console.log('✅ Scenario converted successfully');
+      console.log('Scenario details:', {
+        id: scenario.id,
+        topic: scenario.topic,
+        simulationType: scenario.simulation.type,
+        controlsCount: scenario.simulation.controls.length,
+        controls: scenario.simulation.controls.map(c => ({ id: c.id, label: c.label, default: c.default })),
+        quizCount: scenario.quiz.length,
+        firstQuizQuestion: scenario.quiz[0]?.question,
+        allQuizQuestions: scenario.quiz.map(q => q.question),
+        formulasCount: scenario.formulas?.length || 0,
+        hasNotes: !!scenario.notes
+      });
+
+      set({
+        currentQuestion: topic,
+        currentScenario: scenario,
+        isAIGenerated: true,
+        aiScenarioData: aiData,
+        simulationValues: defaultValues,
+        simulationResults: {},
+        completedTasks: [],
+        learningSteps: [],
+        currentStepIndex: 0,
+        experimentCount: 0,
+        timeSpentInSimulation: 0,
+        quizResults: [],
+        currentQuizIndex: 0,
+        reflectionAnswers: {},
+      });
+
+      console.log('✅ State updated with AI scenario');
+      console.log('📊 Final state check:', {
+        currentScenarioId: scenario.id,
+        currentScenarioQuizCount: scenario.quiz.length,
+        firstQuestion: scenario.quiz[0]?.question
+      });
+
+      toast.success('🤖 AI scenario generated!', {
+        description: aiData.title
+      });
+
+    } catch (error) {
+      console.error('❌ Failed to generate AI scenario:', error);
+      toast.error('AI service unavailable. Using legacy mode.');
+      // Fallback to legacy
+      get().setQuestion(topic);
+    }
   },
   
   startLearning: () => {
@@ -134,7 +286,7 @@ export const useLearningStore = create<LearningState>((set, get) => ({
   },
   
   runExperiment: () => {
-    const { simulationValues, currentScenario } = get();
+    const { simulationValues, currentScenario, isAIGenerated } = get();
     if (!currentScenario) return;
     
     // Increment experiment count and time
@@ -177,12 +329,39 @@ export const useLearningStore = create<LearningState>((set, get) => ({
         brightness: Math.min(100, Math.round((current / 2) * 100)),
       };
     } else {
-      // Default calculation
-      const v1 = (simulationValues.variable1 as number) || 50;
-      const v2 = (simulationValues.variable2 as number) || 50;
-      results = {
-        result: Math.round((v1 + v2) / 2),
-      };
+      // For AI-generated or other simulations - calculate generic results
+      // Take all numeric control values and calculate outputs proportionally
+      const controls = currentScenario.simulation.controls;
+      const outputs = currentScenario.simulation.outputs;
+      
+      // Get all numeric values
+      const numericValues = controls
+        .filter(c => c.type === 'slider')
+        .map(c => {
+          const val = simulationValues[c.id] as number;
+          const max = c.max || 100;
+          return (val || c.default as number || 0) / max; // Normalize to 0-1
+        });
+      
+      // Calculate average normalized value
+      const avgNormalized = numericValues.length > 0 
+        ? numericValues.reduce((sum, v) => sum + v, 0) / numericValues.length 
+        : 0.5;
+      
+      // Generate results for each output
+      outputs.forEach((output, i) => {
+        // Vary results slightly based on output index
+        const variance = 0.8 + (i * 0.1); // 0.8, 0.9, 1.0, etc.
+        const value = Math.round(avgNormalized * 100 * variance);
+        results[output.id] = Math.min(100, Math.max(0, value));
+      });
+      
+      console.log('🔬 Experiment Results:', {
+        controls: controls.map(c => ({ id: c.id, value: simulationValues[c.id] })),
+        outputs: results,
+        avgNormalized,
+        isAIGenerated
+      });
     }
     
     set({ simulationResults: results });

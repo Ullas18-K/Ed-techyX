@@ -28,6 +28,7 @@ interface FormulaReferenceProps {
   onClose: () => void;
   subject: string;
   topic: string;
+  aiFormulas?: string[];
 }
 
 const formulas: Record<string, Formula[]> = {
@@ -122,14 +123,24 @@ const formulas: Record<string, Formula[]> = {
   ]
 };
 
-export function FormulaReference({ isOpen, onClose, subject, topic }: FormulaReferenceProps) {
+export function FormulaReference({ isOpen, onClose, subject, topic, aiFormulas }: FormulaReferenceProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedFormula, setExpandedFormula] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [starredFormulas, setStarredFormulas] = useState<string[]>(['1']);
 
   const subjectKey = subject.toLowerCase();
-  const allFormulas = formulas[subjectKey] || formulas.physics;
+  
+  // Convert AI formulas to Formula format if available
+  const aiFormulasConverted: Formula[] = aiFormulas ? aiFormulas.map((f, i) => ({
+    id: `ai-${i}`,
+    name: `Formula ${i + 1}`,
+    equation: f,
+    variables: [],
+    starred: i === 0
+  })) : [];
+  
+  const allFormulas = aiFormulasConverted.length > 0 ? aiFormulasConverted : (formulas[subjectKey] || formulas.physics);
   
   const filteredFormulas = allFormulas.filter(f => 
     f.name.toLowerCase().includes(searchQuery.toLowerCase()) ||

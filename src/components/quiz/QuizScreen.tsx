@@ -12,6 +12,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { useLearningStore } from '@/lib/learningStore';
 import { cn } from '@/lib/utils';
+import React from 'react';
 
 interface QuizScreenProps {
   onComplete: () => void;
@@ -23,7 +24,8 @@ export function QuizScreen({ onComplete }: QuizScreenProps) {
     quizResults, 
     currentQuizIndex, 
     submitQuizAnswer, 
-    nextQuizQuestion 
+    nextQuizQuestion,
+    isAIGenerated 
   } = useLearningStore();
 
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
@@ -36,6 +38,20 @@ export function QuizScreen({ onComplete }: QuizScreenProps) {
   const isLastQuestion = currentQuizIndex >= questions.length - 1;
   const currentResult = quizResults.find(r => r.questionId === currentQuestion?.id);
 
+  // Debug logging
+  React.useEffect(() => {
+    console.log('📝 QuizScreen Debug:', {
+      isAIGenerated,
+      scenarioId: currentScenario.id,
+      topic: currentScenario.topic,
+      totalQuestions: questions.length,
+      currentQuestionIndex: currentQuizIndex,
+      currentQuestion: currentQuestion.question,
+      firstQuestion: questions[0]?.question,
+      allQuestions: questions.map(q => q.question)
+    });
+  }, [currentQuizIndex, currentScenario, questions, currentQuestion, isAIGenerated]);
+
   const handleAnswerSelect = (answerIndex: number) => {
     if (showFeedback) return;
     setSelectedAnswer(answerIndex);
@@ -44,7 +60,16 @@ export function QuizScreen({ onComplete }: QuizScreenProps) {
   const handleSubmitAnswer = () => {
     if (selectedAnswer === null) return;
 
-    const isCorrect = selectedAnswer === currentQuestion.correctAnswer;
+    // Handle both numeric index and letter-based correct answer (like "B")
+    let correctAnswerIndex: number;
+    if (typeof currentQuestion.correctAnswer === 'string') {
+      // Convert "A", "B", "C", "D" to 0, 1, 2, 3
+      correctAnswerIndex = currentQuestion.correctAnswer.charCodeAt(0) - 65;
+    } else {
+      correctAnswerIndex = currentQuestion.correctAnswer as number;
+    }
+    
+    const isCorrect = selectedAnswer === correctAnswerIndex;
     submitQuizAnswer(currentQuestion.id, selectedAnswer, isCorrect);
     setShowFeedback(true);
   };
@@ -147,7 +172,14 @@ export function QuizScreen({ onComplete }: QuizScreenProps) {
           <div className="space-y-3">
             {currentQuestion.options?.map((option, index) => {
               const isSelected = selectedAnswer === index;
-              const isCorrect = index === currentQuestion.correctAnswer;
+              // Handle both numeric index and letter-based correct answer
+              let correctAnswerIndex: number;
+              if (typeof currentQuestion.correctAnswer === 'string') {
+                correctAnswerIndex = currentQuestion.correctAnswer.charCodeAt(0) - 65;
+              } else {
+                correctAnswerIndex = currentQuestion.correctAnswer as number;
+              }
+              const isCorrect = index === correctAnswerIndex;
               const showCorrectness = showFeedback;
 
               return (

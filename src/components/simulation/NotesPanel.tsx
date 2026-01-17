@@ -30,6 +30,7 @@ interface NotesPanelProps {
   onClose: () => void;
   topicName: string;
   subject: string;
+  aiNotes?: string;
 }
 
 const topicNotes: Record<string, TopicNote[]> = {
@@ -119,14 +120,22 @@ const typeColors = {
   example: 'bg-success/10 text-success border-success/20'
 };
 
-export function NotesPanel({ isOpen, onClose, topicName, subject }: NotesPanelProps) {
+export function NotesPanel({ isOpen, onClose, topicName, subject, aiNotes }: NotesPanelProps) {
   const [activeTab, setActiveTab] = useState<'topic' | 'personal'>('topic');
   const [expandedNote, setExpandedNote] = useState<string | null>(null);
   const [personalNotes, setPersonalNotes] = useState<string>('');
   const [savedNotes, setSavedNotes] = useState<{ id: string; content: string; timestamp: Date }[]>([]);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
-  const notes = topicNotes[topicName] || topicNotes['Photosynthesis'];
+  // Use AI notes if available, otherwise fall back to topic notes
+  const aiNotesConverted: TopicNote[] = aiNotes ? [{
+    id: 'ai-1',
+    title: 'AI Generated Notes',
+    content: aiNotes,
+    type: 'concept'
+  }] : [];
+  
+  const notes = aiNotesConverted.length > 0 ? aiNotesConverted : (topicNotes[topicName] || topicNotes['Photosynthesis']);
 
   const handleCopy = (content: string, id: string) => {
     navigator.clipboard.writeText(content);

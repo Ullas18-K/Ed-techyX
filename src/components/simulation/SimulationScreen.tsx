@@ -16,10 +16,10 @@ import { DataLogger } from './DataLogger';
 import { CanvasAnnotations } from './CanvasAnnotations';
 import { FormulaReference } from './FormulaReference';
 import { SpeedControl } from './SpeedControl';
-import { HypothesisMode } from './HypothesisMode';
 import { LearningProgressBar } from './LearningProgressBar';
 import { StudyRoomPanel } from './StudyRoomPanel';
 import { ConversationalVoiceGuide } from './ConversationalVoiceGuide';
+import { AIContextChat } from './AIContextChat';
 import { toast } from 'sonner';
 
 interface SimulationScreenProps {
@@ -29,6 +29,8 @@ interface SimulationScreenProps {
 export function SimulationScreen({ onComplete }: SimulationScreenProps) {
   const { 
     currentScenario, 
+    isAIGenerated,
+    aiScenarioData,
     simulationValues, 
     simulationResults, 
     completedTasks, 
@@ -48,15 +50,28 @@ export function SimulationScreen({ onComplete }: SimulationScreenProps) {
   const [isAnnotating, setIsAnnotating] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [showHypothesis, setShowHypothesis] = useState(true);
   const [simulationSpeed, setSimulationSpeed] = useState(1);
   const [isPlaying, setIsPlaying] = useState(true);
   const [isExperimentRunning, setIsExperimentRunning] = useState(false);
-  const [showVoiceGuide, setShowVoiceGuide] = useState(true);
+  const [showVoiceGuide, setShowVoiceGuide] = useState<boolean>(true);
+  const [showAIChat, setShowAIChat] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const timeTrackingRef = useRef<NodeJS.Timeout>();
 
   const simulation = currentScenario?.simulation;
+
+  // Debug logging
+  useEffect(() => {
+    console.log('🎮 SimulationScreen - Current State:', {
+      hasScenario: !!currentScenario,
+      isAIGenerated,
+      scenarioId: currentScenario?.id,
+      topic: currentScenario?.topic,
+      simulationType: simulation?.type,
+      controlsCount: simulation?.controls?.length,
+      controls: simulation?.controls?.map(c => ({ id: c.id, label: c.label, type: c.type }))
+    });
+  }, [currentScenario, isAIGenerated, simulation]);
 
   // Track time spent in simulation
   useEffect(() => {
@@ -209,16 +224,136 @@ export function SimulationScreen({ onComplete }: SimulationScreenProps) {
     };
 
     const drawDefault = (ctx: CanvasRenderingContext2D, w: number, h: number) => {
-      ctx.fillStyle = '#f0f4f8';
-      ctx.fillRect(0, 0, w, h);
+      // Generic dynamic visualization for AI-generated simulations
       const t = Date.now() / 1000;
-      for (let i = 0; i < 5; i++) {
+      
+      // Gradient background based on first output value
+      const outputs = simulation.outputs || [];
+      const firstOutput = outputs[0];
+      const outputValue = firstOutput ? (simulationResults[firstOutput.id] || 0) : 50;
+      
+      // Create dynamic gradient based on output intensity
+      const gradient = ctx.createLinearGradient(0, 0, w, h);
+      const intensity = outputValue / 100;
+      gradient.addColorStop(0, `hsl(210, ${40 + intensity * 40}%, ${85 - intensity * 15}%)`);
+      gradient.addColorStop(1, `hsl(220, ${30 + intensity * 30}%, ${75 - intensity * 10}%)`);
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, w, h);
+
+      // Draw control representations (bars on the left)
+      const controls = simulation.controls.filter(c => c.type === 'slider').slice(0, 4);
+      const barWidth = 40;
+      const barSpacing = (h - 80) / Math.max(controls.length, 1);
+      
+      controls.forEach((control, i) => {
+        const value = (simulationValues[control.id] as number) || (control.default as number) || 0;
+        const maxVal = control.max || 100;
+        const normalized = value / maxVal;
+        const barHeight = normalized * 80;
+        
+        // Bar background
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+        ctx.fillRect(20, 40 + i * barSpacing, barWidth, 80);
+        
+        // Bar fill
+        const hue = 200 - i * 30;
+        ctx.fillStyle = `hsla(${hue}, 70%, 50%, 0.8)`;
+        ctx.fillRect(20, 40 + i * barSpacing + (80 - barHeight), barWidth, barHeight);
+        
+        // Label
+        ctx.fillStyle = '#333';
+        ctx.font = '11px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(control.label.substring(0, 8), 40, 35 + i * barSpacing);
+        ctx.fillText(Math.round(value).toString(), 40, 130 + i * barSpacing);
+      });
+
+      // Draw output visualizations (center)
+      const centerX = w / 2 + 40;
+      const centerY = h / 2;
+      
+      // Main visualization - pulsing circles representing outputs
+      outputs.forEach((output, i) => {
+        const val = simulationResults[output.id] || 0;
+        const normalized = val / 100;
+        const radius = 30 + (outputs.length - i) * 25;
+        const pulseRadius = radius + Math.sin(t * 2 + i) * 5 * normalized;
+        
+        // Outer glow
+        const glow = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, pulseRadius + 20);
+        const hue = 200 + i * 40;
+        glow.addColorStop(0, `hsla(${hue}, 70%, 60%, ${normalized * 0.3})`);
+        glow.addColorStop(1, 'transparent');
+        ctx.fillStyle = glow;
+        ctx.fillRect(centerX - pulseRadius - 20, centerY - pulseRadius - 20, 
+                     (pulseRadius + 20) * 2, (pulseRadius + 20) * 2);
+        
+        // Main circle
         ctx.beginPath();
-        ctx.arc(w/2, h/2, 30 + i * 20 + Math.sin(t + i) * 8, 0, Math.PI * 2);
-        ctx.strokeStyle = `hsla(${200 + i * 30}, 70%, 50%, ${0.3 - i * 0.05})`;
-        ctx.lineWidth = 2;
+        ctx.arc(centerX, centerY, pulseRadius, 0, Math.PI * 2);
+        ctx.strokeStyle = `hsla(${hue}, 70%, 50%, ${0.6 + normalized * 0.4})`;
+        ctx.lineWidth = 3;
         ctx.stroke();
+        
+        // Inner fill
+        ctx.fillStyle = `hsla(${hue}, 70%, 60%, ${normalized * 0.2})`;
+        ctx.fill();
+      });
+
+      // Center indicator
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, 8, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(100, 100, 255, 0.8)';
+      ctx.fill();
+
+      // Draw output value bars (right side)
+      const rightX = w - 120;
+      outputs.forEach((output, i) => {
+        const val = simulationResults[output.id] || 0;
+        const barY = 40 + i * (h - 80) / Math.max(outputs.length, 1);
+        const barH = 60;
+        const normalized = val / 100;
+        
+        // Background
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+        ctx.fillRect(rightX, barY, 80, barH);
+        
+        // Fill
+        const fillWidth = normalized * 80;
+        const hue = 120 + i * 60;
+        ctx.fillStyle = `hsla(${hue}, 70%, 50%, 0.8)`;
+        ctx.fillRect(rightX, barY, fillWidth, barH);
+        
+        // Label
+        ctx.fillStyle = '#333';
+        ctx.font = 'bold 12px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(output.label.substring(0, 10), rightX + 40, barY - 5);
+        ctx.fillText(`${Math.round(val)}`, rightX + 40, barY + barH / 2 + 5);
+      });
+
+      // Animated particles showing activity
+      if (outputValue > 20) {
+        ctx.fillStyle = 'rgba(100, 150, 255, 0.6)';
+        const particleCount = Math.floor(outputValue / 20);
+        for (let i = 0; i < particleCount; i++) {
+          const angle = (t + i) * 0.5;
+          const dist = 60 + Math.sin(t * 2 + i) * 20;
+          const px = centerX + Math.cos(angle) * dist;
+          const py = centerY + Math.sin(angle) * dist;
+          ctx.beginPath();
+          ctx.arc(px, py, 3, 0, Math.PI * 2);
+          ctx.fill();
+        }
       }
+
+      // Title overlay
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+      ctx.fillRect(w/2 - 120, 10, 240, 30);
+      ctx.fillStyle = '#333';
+      ctx.font = 'bold 14px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(simulation.title || 'Simulation', w/2, 30);
     };
 
     let animId: number;
@@ -320,15 +455,17 @@ export function SimulationScreen({ onComplete }: SimulationScreenProps) {
             <div className="glass-card rounded-2xl p-4">
               <h3 className="font-semibold text-foreground mb-3 text-sm">Controls</h3>
               <div className="space-y-4">
-                {simulation.controls.slice(0, 3).map((control) => (
+                {simulation.controls.map((control) => (
                   <div key={control.id} className="space-y-2">
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">{control.label}</span>
-                      <span className="text-primary font-medium">{simulationValues[control.id] || control.default}{control.unit}</span>
+                      <span className="text-primary font-medium">
+                        {simulationValues[control.id] ?? control.default}{control.unit}
+                      </span>
                     </div>
                     {control.type === 'slider' && (
                       <Slider 
-                        value={[(simulationValues[control.id] as number) || (control.default as number)]} 
+                        value={[(simulationValues[control.id] as number) ?? (control.default as number)]} 
                         min={control.min} 
                         max={control.max} 
                         step={control.step} 
@@ -342,6 +479,17 @@ export function SimulationScreen({ onComplete }: SimulationScreenProps) {
                         }}
                         className="[&_[role=slider]]:bg-primary [&_[role=slider]]:border-primary/50" 
                       />
+                    )}
+                    {control.type === 'select' && control.options && (
+                      <select
+                        value={String((simulationValues[control.id] as string) ?? control.default)}
+                        onChange={(e) => updateSimulationValue(control.id, e.target.value)}
+                        className="w-full px-3 py-2 rounded-lg bg-background/50 border border-border text-foreground text-sm"
+                      >
+                        {control.options.map((option: string) => (
+                          <option key={option} value={option}>{option}</option>
+                        ))}
+                      </select>
                     )}
                   </div>
                 ))}
@@ -459,17 +607,48 @@ export function SimulationScreen({ onComplete }: SimulationScreenProps) {
               )}
             </div>
 
-            {/* AI Chat */}
+            {/* AI Chat - Use AI-powered chat if scenario is AI-generated */}
             <div className="glass-card rounded-2xl flex-1 flex flex-col overflow-hidden">
-              <AIChatPanel topicName={currentScenario.topic} subject={currentScenario.subject} simulationType={simulation.type} onRequestHint={() => toast.info('Hint: Try changing one variable at a time!')} onRequestExplanation={() => {}} />
+              {isAIGenerated && aiScenarioData ? (
+                <AIContextChat
+                  scenarioId={aiScenarioData.scenarioId}
+                  currentTaskId={currentStepIndex + 1}
+                  context={{
+                    greeting: aiScenarioData.greeting,
+                    grade: aiScenarioData.gradeLevel,
+                    subject: aiScenarioData.subject,
+                    topic: aiScenarioData.title,
+                    currentValues: simulationValues,
+                    results: simulationResults,
+                    task: aiScenarioData.tasks[currentStepIndex] || {}
+                  }}
+                  onTaskComplete={(taskId) => {
+                    toast.success(`Task ${taskId} completed!`);
+                  }}
+                />
+              ) : (
+                <AIChatPanel topicName={currentScenario.topic} subject={currentScenario.subject} simulationType={simulation.type} onRequestHint={() => toast.info('Hint: Try changing one variable at a time!')} onRequestExplanation={() => {}} />
+              )}
             </div>
           </div>
         )}
       </div>
+
       {/* Panels */}
-      <NotesPanel isOpen={isNotesOpen} onClose={() => setIsNotesOpen(false)} topicName={currentScenario.topic} subject={currentScenario.subject} />
-      <FormulaReference isOpen={isFormulaOpen} onClose={() => setIsFormulaOpen(false)} subject={currentScenario.subject} topic={currentScenario.topic} />
-      <HypothesisMode isActive={showHypothesis} onClose={() => setShowHypothesis(false)} simulationType={simulation.type} onPredictionComplete={(correct) => correct && toast.success('+10 points!')} />
+      <NotesPanel 
+        isOpen={isNotesOpen} 
+        onClose={() => setIsNotesOpen(false)} 
+        topicName={currentScenario.topic} 
+        subject={currentScenario.subject}
+        aiNotes={currentScenario.notes}
+      />
+      <FormulaReference 
+        isOpen={isFormulaOpen} 
+        onClose={() => setIsFormulaOpen(false)} 
+        subject={currentScenario.subject} 
+        topic={currentScenario.topic}
+        aiFormulas={currentScenario.formulas}
+      />
       
       {/* Conversational AI Voice Guide */}
       {showVoiceGuide && (
@@ -484,4 +663,4 @@ export function SimulationScreen({ onComplete }: SimulationScreenProps) {
       )}
     </motion.div>
   );
-}
+} 

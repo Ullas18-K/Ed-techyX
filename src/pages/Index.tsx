@@ -49,8 +49,8 @@ const containerVariants = {
 };
 
 const Index = () => {
-  const { currentPhase, setQuestion, startLearning, setPhase, resetSession, currentQuestion, totalPoints } = useLearningStore();
-  const { isAuthenticated, addSimulationHistory, submitSessionResult } = useAuthStore();
+  const { currentPhase, setQuestion, setAIScenario, startLearning, setPhase, resetSession, currentQuestion, totalPoints } = useLearningStore();
+  const { isAuthenticated, addSimulationHistory, submitSessionResult, token } = useAuthStore();
   const [showProfile, setShowProfile] = useState(false);
   const [profileAnchor, setProfileAnchor] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
 
@@ -61,12 +61,36 @@ const Index = () => {
     }
   }, [isAuthenticated, currentPhase, resetSession]);
 
-  const handleQuestionSubmit = useCallback((question: string) => {
-    setQuestion(question);
-    addSimulationHistory(question);
-    startLearning();
-    toast.success('Generating your learning experience...');
-  }, [setQuestion, startLearning, addSimulationHistory]);
+  const handleQuestionSubmit = useCallback(async (question: string) => {
+    let loadingToastId: string | number | undefined;
+    try {
+      // Try AI-powered scenario generation first
+      loadingToastId = toast.loading('🤖 Generating AI-powered scenario...', {
+        description: 'This may take 30-60 seconds. Please wait...',
+        duration: Infinity
+      });
+      
+      await setAIScenario(question, token || '');
+      addSimulationHistory(question);
+      startLearning();
+      
+      toast.dismiss(loadingToastId);
+      toast.success('🎉 AI scenario generated!', {
+        description: 'Your personalized learning experience is ready'
+      });
+    } catch (error) {
+      // Fallback to legacy mode
+      console.log('AI generation failed, using legacy mode:', error);
+      if (loadingToastId) toast.dismiss(loadingToastId);
+      
+      setQuestion(question);
+      addSimulationHistory(question);
+      startLearning();
+      toast.info('Using standard learning mode', {
+        description: 'AI service unavailable - using pre-built content'
+      });
+    }
+  }, [setQuestion, setAIScenario, startLearning, addSimulationHistory, token]);
 
   const handleThinkingComplete = useCallback(() => { 
     setPhase('plan'); 
