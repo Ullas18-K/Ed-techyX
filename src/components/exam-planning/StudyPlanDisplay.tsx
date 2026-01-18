@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Calendar, Clock, BookOpen, TrendingUp, Download, ChevronDown, ChevronUp } from 'lucide-react';
+import { Calendar, Clock, BookOpen, TrendingUp, Download, ChevronDown, ChevronUp, RotateCw } from 'lucide-react';
 import { useState } from 'react';
 import { DailyPlanCard } from './DailyPlanCard';
 
@@ -117,9 +117,12 @@ export const StudyPlanDisplay = ({ plan }: StudyPlanDisplayProps) => {
         {/* Revision Info */}
         {plan.revisionDays > 0 && (
           <div className="mt-4 p-3 rounded-xl bg-accent/10 border border-accent/20">
-            <p className="text-sm text-foreground">
-              📚 <strong>{plan.revisionDays} days</strong> reserved for revision at the end
-            </p>
+            <div className="flex items-center gap-2">
+              <RotateCw className="w-4 h-4 text-accent flex-shrink-0" />
+              <p className="text-sm text-foreground">
+                <strong>{plan.revisionDays} days</strong> reserved for revision at the end
+              </p>
+            </div>
           </div>
         )}
       </div>

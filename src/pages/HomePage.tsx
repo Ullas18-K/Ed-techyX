@@ -10,7 +10,7 @@ import { useLearningStore } from '@/lib/learningStore';
 import { useAuthStore } from '@/lib/authStore';
 import { toast } from 'sonner';
 import { HomePenman } from '@/components/assistant/HomePenman';
-import { Users } from 'lucide-react';
+import { Users, Calendar } from 'lucide-react';
 import { JoinRoomModal } from '@/components/studyroom/JoinRoomModal';
 import { ExamPlanningCard } from '@/components/home/ExamPlanningCard';
 import { ExamPlanningModal } from '@/components/exam-planning/ExamPlanningModal';
@@ -169,19 +169,14 @@ const HomePage = () => {
               >
                 <HeroSection />
                 <InputMethods onSubmit={handleQuestionSubmit} />
-                
-                {/* Exam Planning Card */}
-                <div className="w-full max-w-md">
-                  <ExamPlanningCard onClick={() => setShowExamPlanning(true)} />
-                </div>
               </motion.div>
             </div>
 
             {/* Added Home Assistant */}
             <HomePenman />
 
-            {/* Study Room Entry Point */}
-            <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-40 flex flex-col items-center gap-4">
+            {/* Study Room and Exam Planner Buttons */}
+            <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-40 flex items-center gap-3">
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
@@ -190,6 +185,16 @@ const HomePage = () => {
               >
                 <Users className="w-4 h-4 text-primary" />
                 <span className="text-xs font-bold text-foreground">JOIN STUDY ROOM</span>
+              </motion.button>
+              
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setShowExamPlanning(true)}
+                className="flex items-center gap-2 px-6 py-2.5 rounded-full glass-panel border-accent/20 shadow-glow hover:bg-accent/5 transition-all"
+              >
+                <Calendar className="w-4 h-4 text-accent" />
+                <span className="text-xs font-bold text-foreground">AI EXAM PLANNER</span>
               </motion.button>
             </div>
 

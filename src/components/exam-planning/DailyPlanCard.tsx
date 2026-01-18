@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronDown, ChevronUp, Clock, BookOpen, Download, Loader2, Sparkles } from 'lucide-react';
+import { ChevronDown, ChevronUp, Clock, BookOpen, Download, Loader2, Sparkles, Sunrise, Sun, Sunset, Moon } from 'lucide-react';
 import { useState } from 'react';
 import { useExamPlanningStore } from '@/lib/examPlanningStore';
 import { useAuthStore } from '@/lib/authStore';
@@ -41,10 +41,10 @@ const TIME_SLOT_COLORS = {
 };
 
 const TIME_SLOT_ICONS = {
-  morning: '🌅',
-  afternoon: '☀️',
-  evening: '🌆',
-  night: '🌙'
+  morning: Sunrise,
+  afternoon: Sun,
+  evening: Sunset,
+  night: Moon
 };
 
 export const DailyPlanCard = ({ dayPlan, planId, isExpanded, onToggle }: DailyPlanCardProps) => {
@@ -160,7 +160,10 @@ export const DailyPlanCard = ({ dayPlan, planId, isExpanded, onToggle }: DailyPl
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="text-lg">{TIME_SLOT_ICONS[subject.timeSlot as keyof typeof TIME_SLOT_ICONS]}</span>
+                          {(() => {
+                            const IconComponent = TIME_SLOT_ICONS[subject.timeSlot as keyof typeof TIME_SLOT_ICONS] || TIME_SLOT_ICONS.morning;
+                            return <IconComponent className="w-4 h-4 text-primary" />;
+                          })()}
                           <span className="text-xs font-semibold text-muted-foreground uppercase">
                             {subject.timeSlot}
                           </span>

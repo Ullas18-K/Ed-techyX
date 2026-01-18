@@ -1,6 +1,7 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, FileText, Calculator, BookOpen, Award, Download } from 'lucide-react';
 import { useState } from 'react';
+import { formatText } from '@/lib/markdownCleaner';
 
 interface Derivation {
   title: string;
@@ -147,7 +148,7 @@ export const LearningKitContent = ({ learningKit, day, onClose }: LearningKitCon
                           <h3 className="text-lg font-semibold text-foreground">NCERT-Based Notes</h3>
                         </div>
                         <div className="text-foreground whitespace-pre-wrap leading-relaxed">
-                          {learningKit.notes}
+                          {formatText(learningKit.notes)}
                         </div>
                       </div>
                     )}
@@ -182,7 +183,7 @@ export const LearningKitContent = ({ learningKit, day, onClose }: LearningKitCon
                           <div className="space-y-2">
                             {derivation.steps.map((step, stepIdx) => (
                               <div key={stepIdx} className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">
-                                {step}
+                                {formatText(step)}
                               </div>
                             ))}
                           </div>
@@ -263,7 +264,7 @@ export const LearningKitContent = ({ learningKit, day, onClose }: LearningKitCon
                           </div>
                           <div className="mb-3">
                             <h5 className="text-sm font-semibold text-foreground mb-2">Question:</h5>
-                            <p className="text-sm text-foreground leading-relaxed">{pyq.question}</p>
+                            <p className="text-sm text-foreground leading-relaxed">{formatText(pyq.question)}</p>
                           </div>
                           {pyq.options && pyq.options.length > 0 && (
                             <div className="mb-3 space-y-1">
@@ -281,7 +282,7 @@ export const LearningKitContent = ({ learningKit, day, onClose }: LearningKitCon
                           )}
                           <div className="p-3 rounded-lg bg-primary/5 border border-primary/10">
                             <h5 className="text-sm font-semibold text-primary mb-2">Solution:</h5>
-                            <p className="text-sm text-foreground leading-relaxed">{pyq.solution || pyq.explanation}</p>
+                            <p className="text-sm text-foreground leading-relaxed">{formatText(pyq.solution || pyq.explanation)}</p>
                           </div>
                         </div>
                       ))

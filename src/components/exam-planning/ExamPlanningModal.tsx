@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Calendar, BookOpen, Clock, ChevronRight, ChevronLeft, Sparkles, Loader2 } from 'lucide-react';
+import { X, Calendar, BookOpen, Clock, ChevronRight, ChevronLeft, Sparkles, Loader2, Lightbulb } from 'lucide-react';
 import { useExamPlanningStore } from '@/lib/examPlanningStore';
 import { useAuthStore } from '@/lib/authStore';
 import { toast } from 'sonner';
@@ -337,9 +337,13 @@ export const ExamPlanningModal = ({ isOpen, onClose, onPlanGenerated }: ExamPlan
                       </div>
 
                       <div className="mt-6 p-4 rounded-xl bg-accent/10 border border-accent/20">
-                        <p className="text-sm text-foreground">
-                          💡 <strong>Tip:</strong> Be realistic about your daily capacity. Quality matters more than quantity!
-                        </p>
+                        <div className="flex items-start gap-3">
+                          <Lightbulb className="w-5 h-5 text-accent flex-shrink-0 mt-0.5" />
+                          <div>
+                            <p className="text-sm font-semibold text-foreground mb-1">Pro Tip</p>
+                            <p className="text-sm text-muted-foreground">Be realistic about your daily capacity. Quality matters more than quantity!</p>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </motion.div>
