@@ -1,6 +1,297 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
+// Helper function to export as printable HTML (for Unicode support)
+const exportAsHTMLPrint = (data: {
+    title: string;
+    subject: string;
+    gradeLevel: number | string;
+    scenarioDescription: string;
+    keyConcepts: { description: string; details: string }[];
+    notes?: string | string[];
+    formulas?: string[];
+    derivations?: string | string[];
+    pyqs?: {
+        questionText: string;
+        answer?: string;
+        answerExplanation?: string;
+        year?: number;
+        source?: string;
+    }[];
+}) => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+        alert('Please allow popups to download the study material');
+        return;
+    }
+
+    const notesText = Array.isArray(data.notes) ? data.notes.join('\n\n') : (data.notes || '');
+    const derivationText = data.derivations 
+        ? (Array.isArray(data.derivations) ? data.derivations.join('\n\n') : data.derivations)
+        : '';
+
+    const html = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${data.title} - Study Material</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;600;700&family=Noto+Sans+Devanagari:wght@400;600;700&family=Noto+Sans+Kannada:wght@400;600;700&family=Noto+Sans+Tamil:wght@400;600;700&family=Noto+Sans+Telugu:wght@400;600;700&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans', 'Noto Sans Devanagari', 'Noto Sans Kannada', 'Noto Sans Tamil', 'Noto Sans Telugu', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 210mm;
+            margin: 0 auto;
+            padding: 20mm;
+            background: white;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+        
+        .header .meta {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 15px;
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        
+        .section {
+            margin-bottom: 30px;
+            page-break-inside: avoid;
+        }
+        
+        .section-title {
+            color: #3b82f6;
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 15px;
+            padding-bottom: 8px;
+            border-bottom: 3px solid #3b82f6;
+        }
+        
+        .content {
+            font-size: 14px;
+            white-space: pre-wrap;
+            line-height: 1.8;
+        }
+        
+        .concepts-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        
+        .concepts-table th {
+            background: #3b82f6;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+        }
+        
+        .concepts-table td {
+            padding: 10px 12px;
+            border: 1px solid #e5e7eb;
+        }
+        
+        .concepts-table tr:nth-child(even) {
+            background: #f9fafb;
+        }
+        
+        .pyq-item {
+            background: #f8fafc;
+            border-left: 4px solid #3b82f6;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+            page-break-inside: avoid;
+        }
+        
+        .pyq-question {
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 10px;
+            font-size: 15px;
+        }
+        
+        .pyq-header {
+            color: #3b82f6;
+            font-weight: 700;
+            font-size: 16px;
+            margin-bottom: 8px;
+        }
+        
+        .pyq-answer {
+            background: #ecfdf5;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+        }
+        
+        .pyq-explanation {
+            background: #fef3c7;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+        }
+        
+        .label {
+            font-weight: 700;
+            color: #059669;
+            display: block;
+            margin-bottom: 5px;
+        }
+        
+        .formula-item {
+            background: #f0f9ff;
+            padding: 10px 15px;
+            margin: 8px 0;
+            border-radius: 5px;
+            border-left: 3px solid #0ea5e9;
+        }
+        
+        @media print {
+            body {
+                padding: 10mm;
+            }
+            
+            .section {
+                page-break-inside: avoid;
+            }
+            
+            .header {
+                page-break-after: avoid;
+            }
+        }
+        
+        @page {
+            margin: 15mm;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>${data.title}</h1>
+        <div class="meta">
+            <span>Subject: ${data.subject}</span>
+            <span>Level: Class ${data.gradeLevel}</span>
+        </div>
+    </div>
+    
+    <div class="section">
+        <h2 class="section-title">📖 Topic Overview</h2>
+        <div class="content">${data.scenarioDescription}</div>
+    </div>
+    
+    <div class="section">
+        <h2 class="section-title">🎯 Key Concepts</h2>
+        <table class="concepts-table">
+            <thead>
+                <tr>
+                    <th style="width: 50px">#</th>
+                    <th style="width: 35%">Concept</th>
+                    <th>Details</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${data.keyConcepts.map((c, i) => `
+                    <tr>
+                        <td>${i + 1}</td>
+                        <td><strong>${c.description}</strong></td>
+                        <td>${c.details}</td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        </table>
+    </div>
+    
+    ${notesText ? `
+    <div class="section">
+        <h2 class="section-title">📝 Comprehensive Notes</h2>
+        <div class="content">${notesText}</div>
+    </div>
+    ` : ''}
+    
+    ${(data.formulas && data.formulas.length > 0) || derivationText ? `
+    <div class="section">
+        <h2 class="section-title">🔢 Formulas & Derivations</h2>
+        ${data.formulas && data.formulas.length > 0 ? `
+            ${data.formulas.map(f => `<div class="formula-item">${f}</div>`).join('')}
+        ` : ''}
+        ${derivationText ? `<div class="content" style="margin-top: 15px">${derivationText}</div>` : ''}
+    </div>
+    ` : ''}
+    
+    ${data.pyqs && data.pyqs.length > 0 ? `
+    <div class="section" style="page-break-before: always">
+        <h2 class="section-title">✍️ Practice Questions (PYQs & AI Generated)</h2>
+        ${data.pyqs.map((q, i) => `
+            <div class="pyq-item">
+                <div class="pyq-header">
+                    Q${i + 1}: ${q.year ? `(${q.year})` : ''} ${q.source === 'pyq' ? '[PYQ]' : '[AI Generated]'}
+                </div>
+                <div class="pyq-question">${q.questionText}</div>
+                ${q.answer ? `
+                    <div class="pyq-answer">
+                        <span class="label">Answer:</span>
+                        ${q.answer}
+                    </div>
+                ` : ''}
+                ${q.answerExplanation ? `
+                    <div class="pyq-explanation">
+                        <span class="label">Explanation:</span>
+                        ${q.answerExplanation}
+                    </div>
+                ` : ''}
+            </div>
+        `).join('')}
+    </div>
+    ` : ''}
+    
+    <div style="margin-top: 40px; text-align: center; color: #9ca3af; font-size: 12px; border-top: 1px solid #e5e7eb; padding-top: 20px;">
+        Generated by EdTech Learning Forge • ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}
+    </div>
+    
+    <script>
+        window.onload = function() {
+            setTimeout(() => {
+                window.print();
+                setTimeout(() => window.close(), 500);
+            }, 500);
+        };
+    </script>
+</body>
+</html>
+    `;
+
+    printWindow.document.write(html);
+    printWindow.document.close();
+};
+
 export const exportLeaderboardToPDF = (
     leaderboard: { name: string; score: number; puzzleScore?: number }[],
     topic: string,
@@ -94,6 +385,33 @@ export const exportStudyMaterialToPDF = (
         }[];
     }
 ) => {
+    // For Unicode support (Indian languages), we'll create an HTML document and trigger print
+    // This preserves all Unicode characters properly
+    const hasUnicodeContent = () => {
+        const checkText = (text: string) => {
+            // Check if text contains non-ASCII characters (Unicode)
+            return /[^\x00-\x7F]/.test(text);
+        };
+        
+        if (checkText(data.title) || checkText(data.subject) || checkText(data.scenarioDescription)) {
+            return true;
+        }
+        
+        if (data.notes) {
+            const notesText = Array.isArray(data.notes) ? data.notes.join('') : data.notes;
+            if (checkText(notesText)) return true;
+        }
+        
+        return false;
+    };
+
+    // If content has Unicode (Indian languages), use HTML print method
+    if (hasUnicodeContent()) {
+        exportAsHTMLPrint(data);
+        return;
+    }
+
+    // For English-only content, use jsPDF
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
     let currentY = 20;
