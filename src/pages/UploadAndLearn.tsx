@@ -8,6 +8,10 @@ import { Translate } from '@/components/Translate';
 import { Navbar } from '@/components/Navbar';
 import { Penman } from '@/components/assistant/Penman';
 import { jsPDF } from "jspdf";
+import ReactMarkdown from 'react-markdown';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import 'katex/dist/katex.min.css';
 
 interface AnalysisResult {
     is_ncert: boolean;
@@ -99,7 +103,16 @@ const UploadAndLearn: React.FC = () => {
         y += 10;
         doc.setFont("helvetica", "normal");
         doc.setFontSize(11);
-        const answerLines = doc.splitTextToSize(result.answer || "", width);
+
+        // Clean markdown for PDF
+        const cleanAnswer = (result.answer || "")
+            .replace(/#{1,6}\s?/g, '') // Remove headers
+            .replace(/\*\*(.*?)\*\*/g, '$1') // Remove bold
+            .replace(/\*(.*?)\*/g, '$1') // Remove italic
+            .replace(/`(.*?)`/g, '$1') // Remove code blocks
+            .replace(/\[(.*?)\]\(.*?\)/g, '$1'); // Remove links
+
+        const answerLines = doc.splitTextToSize(cleanAnswer, width);
 
         // Add pages if answer is long
         answerLines.forEach((line: string) => {
@@ -321,10 +334,18 @@ const UploadAndLearn: React.FC = () => {
                                                             <p className="text-[9px] font-black text-primary uppercase tracking-[0.2em]">Academic Solution</p>
                                                             <div className="h-px flex-1 bg-gradient-to-r from-primary/30 to-transparent" />
                                                         </div>
-                                                        <div
-                                                            className="text-xs md:text-sm text-foreground/90 leading-relaxed prose prose-invert prose-sm max-w-none whitespace-pre-wrap font-medium"
-                                                            dangerouslySetInnerHTML={{ __html: result.answer?.replace(/\n/g, '<br/>') || '' }}
-                                                        />
+                                                        <div className="text-xs md:text-sm text-foreground/90 leading-relaxed prose prose-invert prose-sm max-w-none font-medium
+                                                                prose-headings:text-primary prose-headings:font-black prose-headings:tracking-tight prose-headings:mt-4 prose-headings:mb-2
+                                                                prose-p:mb-3 prose-strong:text-primary prose-strong:font-black
+                                                                prose-ul:list-disc prose-ul:pl-4 prose-li:mb-1
+                                                                prose-code:bg-white/10 prose-code:px-1 prose-code:rounded prose-code:before:content-none prose-code:after:content-none">
+                                                            <ReactMarkdown
+                                                                remarkPlugins={[remarkMath]}
+                                                                rehypePlugins={[rehypeKatex]}
+                                                            >
+                                                                {result.answer || ''}
+                                                            </ReactMarkdown>
+                                                        </div>
                                                     </div>
                                                 </>
                                             ) : (
