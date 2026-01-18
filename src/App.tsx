@@ -11,7 +11,6 @@ import OpticsPage from "./pages/OpticsPage";
 import SimulationPage from "./pages/SimulationPage";
 import QuizPage from "./pages/QuizPage";
 import ReflectionPage from "./pages/ReflectionPage";
-import FlashcardsPage from "./pages/FlashcardsPage";
 import MasteryPage from "./pages/MasteryPage";
 import NotFound from "./pages/NotFound";
 import OpticsPuzzle from "./pages/gamified/OpticsPuzzle";
@@ -52,7 +51,6 @@ const App = () => (
           <Route path="/simulation" element={<ProtectedRoute><SimulationPage /></ProtectedRoute>} />
           <Route path="/quiz" element={<ProtectedRoute><QuizPage /></ProtectedRoute>} />
           <Route path="/reflection" element={<ProtectedRoute><ReflectionPage /></ProtectedRoute>} />
-          <Route path="/flashcards" element={<ProtectedRoute><FlashcardsPage /></ProtectedRoute>} />
           <Route path="/mastery" element={<ProtectedRoute><MasteryPage /></ProtectedRoute>} />
           <Route path="/upload-and-learn" element={<ProtectedRoute><UploadAndLearn /></ProtectedRoute>} />
           <Route path="*" element={<NotFound />} />

@@ -27,7 +27,6 @@ from rag.pdf_processor import process_ncert_directory
 from agents.scenario_gen import ScenarioGenerator
 from agents.conversation import ConversationGuide
 from agents.pyq_generator import PYQGenerator
-from agents.visual_flashcards import VisualFlashcardGenerator
 from agents.upload_learn_agent import UploadLearnAgent
 from agents.exam_planner import ExamPlannerAgent
 from utils.pyq_ingestion import ingest_all_pyqs
@@ -72,13 +71,12 @@ rag_retriever: Optional[RAGRetriever] = None
 scenario_generator: Optional[ScenarioGenerator] = None
 conversation_guide: Optional[ConversationGuide] = None
 pyq_generator: Optional[PYQGenerator] = None
-visual_flashcard_generator: Optional[VisualFlashcardGenerator] = None
 exam_planner: Optional[ExamPlannerAgent] = None
 
 @app.on_event("startup")
 async def startup_event():
     """Initialize services on startup."""
-    global rag_retriever, scenario_generator, conversation_guide, pyq_generator, visual_flashcard_generator, upload_learn_agent, exam_planner
+    global rag_retriever, scenario_generator, conversation_guide, pyq_generator, upload_learn_agent, exam_planner
     
     logger.info("Starting AI Service...")
     logger.info(f"Environment: {settings.ENVIRONMENT}")
@@ -93,11 +91,9 @@ async def startup_event():
         scenario_generator = ScenarioGenerator(rag_retriever)
         conversation_guide = ConversationGuide(rag_retriever)  # Pass RAG to conversation guide
         pyq_generator = PYQGenerator(rag_retriever)  # Initialize PYQ generator
-        visual_flashcard_generator = VisualFlashcardGenerator(rag_retriever)  # Initialize flashcard generator
         upload_learn_agent = UploadLearnAgent() # Initialize OCR agent
         conversation_guide = ConversationGuide(rag_retriever)
         pyq_generator = PYQGenerator(rag_retriever)
-        visual_flashcard_generator = VisualFlashcardGenerator(rag_retriever)
         exam_planner = ExamPlannerAgent(rag_retriever)
         
         logger.info("All agents initialized successfully")
@@ -610,84 +606,6 @@ async def synthesize_speech(request: dict):
     except Exception as e:
         logger.error(f"❌ TTS Error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Speech synthesis failed: {str(e)}")
-
-
-# Visual Flashcards Endpoint
-@app.post("/api/visual-flashcards/generate")
-async def generate_visual_flashcards(
-    background_tasks: BackgroundTasks,
-    grade: int,
-    subject: str,
-    topic: str
-):
-    """
-    Generate visual flashcards asynchronously.
-    Returns immediately, flashcards generated in background.
-    """
-    try:
-        logger.info(f"""\n{'='*60}
-🎨 VISUAL FLASHCARD GENERATION REQUEST
-{'='*60}
-Grade: {grade}
-Subject: {subject}
-Topic: {topic}
-{'='*60}""")
-        
-        if not visual_flashcard_generator:
-            logger.error("❌ Visual flashcard generator not initialized!")
-            raise HTTPException(status_code=500, detail="Visual flashcard generator not initialized")
-        
-        # Check cache first
-        cache_key = build_cache_key(
-            endpoint="flashcards",
-            grade=grade,
-            subject=subject,
-            topic=topic
-        )
-        
-        cached_response = get_from_cache(cache_key)
-        if cached_response:
-            logger.info(f"✅ Returning cached flashcards: {len(cached_response['flashcards'])} cards")
-            return cached_response
-        
-        # Generate flashcards (this will run synchronously for now)
-        # In production, you might want true async/background processing
-        logger.info("🔄 Starting flashcard generation...")
-        
-        flashcards = await visual_flashcard_generator.generate_flashcards(
-            grade=grade,
-            subject=subject,
-            topic=topic
-        )
-        
-        # Cache the response
-        response_data = {
-            "success": True,
-            "flashcards": flashcards,
-            "count": len(flashcards)
-        }
-        set_cache(cache_key, response_data)
-        
-        logger.info(f"✅ Successfully generated {len(flashcards)} flashcards")
-        logger.info(f"""\n{'='*60}
-✅ FLASHCARD GENERATION COMPLETE
-{'='*60}
-Count: {len(flashcards)}
-Flashcards: {[f['name'] for f in flashcards]}
-{'='*60}\n""")
-        
-        return response_data
-        
-    except Exception as e:
-        logger.error(f"""\n{'='*60}
-❌ FLASHCARD GENERATION FAILED
-{'='*60}
-Error: {str(e)}
-Type: {type(e).__name__}
-{'='*60}\n""")
-        import traceback
-        logger.error(f"Stack trace:\n{traceback.format_exc()}")
-        raise HTTPException(status_code=500, detail=str(e))
 
 
 # =====================================================

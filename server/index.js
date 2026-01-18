@@ -5,7 +5,6 @@ import connectDB from './config/database.js';
 import authRoutes from './routes/auth.js';
 import aiRoutes from './routes/ai.js';
 import translationRoutes from './routes/translation.js';
-import flashcardRoutes from './routes/flashcards.js';
 import examPlanningRoutes from './routes/examPlanning.js';
 
 // Load environment variables
@@ -57,7 +56,6 @@ app.use((req, res, next) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/translate', translationRoutes);
-app.use('/api/visual-flashcards', flashcardRoutes);
 app.use('/api/exam-planning', examPlanningRoutes);
 
 // Health check route
