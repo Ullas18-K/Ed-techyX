@@ -12,6 +12,10 @@ import { toast } from 'sonner';
 import { HomePenman } from '@/components/assistant/HomePenman';
 import { Users } from 'lucide-react';
 import { JoinRoomModal } from '@/components/studyroom/JoinRoomModal';
+import { ExamPlanningCard } from '@/components/home/ExamPlanningCard';
+import { ExamPlanningModal } from '@/components/exam-planning/ExamPlanningModal';
+import { StudyPlanDisplay } from '@/components/exam-planning/StudyPlanDisplay';
+import { useExamPlanningStore } from '@/lib/examPlanningStore';
 
 const pageVariants = {
   hidden: { opacity: 0 },
@@ -41,6 +45,9 @@ const HomePage = () => {
   const [profileAnchor, setProfileAnchor] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
   const [isThinking, setIsThinking] = useState(false);
   const [showJoinRoom, setShowJoinRoom] = useState(false);
+  const [showExamPlanning, setShowExamPlanning] = useState(false);
+  const [showStudyPlan, setShowStudyPlan] = useState(false);
+  const { currentPlan } = useExamPlanningStore();
 
   // Reset to home when component mounts
   useEffect(() => {
@@ -162,6 +169,11 @@ const HomePage = () => {
               >
                 <HeroSection />
                 <InputMethods onSubmit={handleQuestionSubmit} />
+                
+                {/* Exam Planning Card */}
+                <div className="w-full max-w-md">
+                  <ExamPlanningCard onClick={() => setShowExamPlanning(true)} />
+                </div>
               </motion.div>
             </div>
 
@@ -185,6 +197,47 @@ const HomePage = () => {
               isOpen={showJoinRoom}
               onClose={() => setShowJoinRoom(false)}
             />
+
+            {/* Exam Planning Modal */}
+            <ExamPlanningModal
+              isOpen={showExamPlanning}
+              onClose={() => setShowExamPlanning(false)}
+              onPlanGenerated={() => setShowStudyPlan(true)}
+            />
+
+            {/* Study Plan Display Modal */}
+            <AnimatePresence>
+              {showStudyPlan && currentPlan && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+                  onClick={() => setShowStudyPlan(false)}
+                >
+                  <motion.div
+                    initial={{ scale: 0.9, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0.9, opacity: 0 }}
+                    className="w-full max-w-6xl max-h-[90vh] overflow-y-auto"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div className="glass-panel rounded-3xl p-6 shadow-2xl border border-primary/20">
+                      <div className="flex items-center justify-between mb-6">
+                        <h2 className="text-2xl font-bold text-foreground">Your Study Plan</h2>
+                        <button
+                          onClick={() => setShowStudyPlan(false)}
+                          className="p-2 rounded-xl hover:bg-destructive/10 transition-colors"
+                        >
+                          <span className="text-2xl text-muted-foreground">×</span>
+                        </button>
+                      </div>
+                      <StudyPlanDisplay plan={currentPlan} />
+                    </div>
+                  </motion.div>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             {/* Powered by Gemini Attribution */}
 

@@ -182,3 +182,40 @@ class UploadAndLearnResponse(BaseModel):
     extracted_question: str = Field(..., alias="extracted_question")
     status: str = "success" # "success" or "unsupported"
     message: Optional[str] = None
+
+# Exam Planning Models
+class ExamPlanRequest(BaseModel):
+    """Request for generating an exam study plan"""
+    exam_date: str = Field(..., description="ISO format exam date (YYYY-MM-DD)")
+    current_date: Optional[str] = Field(None, description="ISO format current date (defaults to today)")
+    subjects: List[str] = Field(..., description="List of subjects to study")
+    topics: List[str] = Field(..., description="List of topics/chapters to cover")
+    daily_study_hours: int = Field(6, ge=1, le=16, description="Hours available per day")
+    grade: int = Field(12, ge=1, le=12, description="Student grade level")
+    exam_board: str = Field("CBSE", description="Exam board (CBSE, ICSE, etc.)")
+
+
+class ExamPlanResponse(BaseModel):
+    """Response containing generated exam study plan"""
+    time_analysis: Dict[str, Any]
+    chapter_priorities: List[Dict[str, Any]]
+    daily_plans: List[Dict[str, Any]]
+    metadata: Dict[str, Any]
+
+
+class LearningKitRequest(BaseModel):
+    """Request for generating daily learning kit content"""
+    day: int = Field(..., description="Day number")
+    subjects: List[Dict[str, Any]] = Field(..., description="Subjects with chapters for this day")
+    grade: int = Field(12, ge=1, le=12, description="Student grade level")
+    exam_board: str = Field("CBSE", description="Exam board")
+
+
+class LearningKitResponse(BaseModel):
+    """Response containing learning kit content"""
+    notes: str
+    derivations: List[Dict[str, Any]]
+    formulas: List[Dict[str, Any]]
+    pyqs: List[Dict[str, Any]]
+    tips: List[str]
+    common_mistakes: List[str] = Field(alias="commonMistakes")

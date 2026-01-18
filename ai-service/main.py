@@ -9,6 +9,7 @@ from fastapi.responses import JSONResponse
 import logging
 from pathlib import Path
 from typing import Optional
+from datetime import datetime
 import uvicorn
 
 from config.settings import settings
@@ -16,7 +17,9 @@ from models.schemas import (
     ScenarioRequest, ScenarioResponse,
     ConversationRequest, ConversationResponse,
     QuizRequest, QuizResponse,
-    UploadAndLearnResponse
+    UploadAndLearnResponse,
+    ExamPlanRequest, ExamPlanResponse,
+    LearningKitRequest, LearningKitResponse,
 )
 from models.pyq_schemas import PYQRequest, PYQResponse
 from rag.retriever import RAGRetriever
@@ -26,6 +29,7 @@ from agents.conversation import ConversationGuide
 from agents.pyq_generator import PYQGenerator
 from agents.visual_flashcards import VisualFlashcardGenerator
 from agents.upload_learn_agent import UploadLearnAgent
+from agents.exam_planner import ExamPlannerAgent
 from utils.pyq_ingestion import ingest_all_pyqs
 from utils.tts_service import tts_service
 from utils.ai_response_cache import build_cache_key, get_from_cache, set_cache
@@ -69,12 +73,12 @@ scenario_generator: Optional[ScenarioGenerator] = None
 conversation_guide: Optional[ConversationGuide] = None
 pyq_generator: Optional[PYQGenerator] = None
 visual_flashcard_generator: Optional[VisualFlashcardGenerator] = None
-upload_learn_agent: Optional[UploadLearnAgent] = None
+exam_planner: Optional[ExamPlannerAgent] = None
 
 @app.on_event("startup")
 async def startup_event():
     """Initialize services on startup."""
-    global rag_retriever, scenario_generator, conversation_guide, pyq_generator, visual_flashcard_generator, upload_learn_agent
+    global rag_retriever, scenario_generator, conversation_guide, pyq_generator, visual_flashcard_generator, upload_learn_agent, exam_planner
     
     logger.info("Starting AI Service...")
     logger.info(f"Environment: {settings.ENVIRONMENT}")
@@ -91,6 +95,10 @@ async def startup_event():
         pyq_generator = PYQGenerator(rag_retriever)  # Initialize PYQ generator
         visual_flashcard_generator = VisualFlashcardGenerator(rag_retriever)  # Initialize flashcard generator
         upload_learn_agent = UploadLearnAgent() # Initialize OCR agent
+        conversation_guide = ConversationGuide(rag_retriever)
+        pyq_generator = PYQGenerator(rag_retriever)
+        visual_flashcard_generator = VisualFlashcardGenerator(rag_retriever)
+        exam_planner = ExamPlannerAgent(rag_retriever)
         
         logger.info("All agents initialized successfully")
         
@@ -192,6 +200,56 @@ async def guide_conversation(request: ConversationRequest):
     except Exception as e:
         logger.error(f"Error in conversation guide: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/chat")
+async def generic_chat(request: dict):
+    """
+    Generic chat endpoint for backwards compatibility.
+    Redirects to appropriate specific endpoint based on context.
+    
+    DEPRECATED: Use specific endpoints instead:
+    - /api/conversation/guide for learning guidance
+    - /api/scenario/generate for scenario generation
+    - /api/exam-planning/generate for exam planning
+    """
+    try:
+        logger.warning("⚠️ /api/chat endpoint is deprecated. Please use specific endpoints.")
+        
+        message = request.get("message", "")
+        system_prompt = request.get("systemPrompt", "")
+        temperature = request.get("temperature", 0.7)
+        max_tokens = request.get("maxTokens", 2000)
+        
+        # Use Gemini directly for generic chat
+        if not message:
+            raise HTTPException(status_code=400, detail="message field is required")
+        
+        import google.generativeai as genai
+        genai.configure(api_key=settings.GEMINI_API_KEY)
+        
+        model = genai.GenerativeModel(settings.GENERATION_MODEL)
+        
+        full_prompt = f"{system_prompt}\n\n{message}" if system_prompt else message
+        
+        response = model.generate_content(
+            full_prompt,
+            generation_config=genai.types.GenerationConfig(
+                temperature=temperature,
+                max_output_tokens=max_tokens,
+            )
+        )
+        
+        return {
+            "success": True,
+            "response": response.text,
+            "message": response.text
+        }
+        
+    except Exception as e:
+        logger.error(f"Generic chat error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.get("/api/rag/stats")
 async def get_rag_stats():
@@ -667,6 +725,202 @@ async def upload_and_learn(image: UploadFile = File(...)):
 
 
 # Error handlers
+# ============================================================================
+# EXAM PLANNING ENDPOINTS
+# ============================================================================
+
+@app.post("/api/exam-planning/generate", response_model=ExamPlanResponse)
+async def generate_exam_plan(request: ExamPlanRequest):
+    """
+    Generate AI-powered exam study plan using RAG + Gemini.
+    
+    Uses cached responses when available (persistent across restarts).
+    Generates dynamic plans based on NCERT content, exam patterns, and user inputs.
+    """
+    try:
+        logger.info(f"""\n{'='*60}
+📚 EXAM PLAN GENERATION REQUEST
+{'='*60}
+Exam Date: {request.exam_date}
+Grade: {request.grade} | Board: {request.exam_board}
+Subjects: {', '.join(request.subjects)}
+Topics: {len(request.topics)} topics
+Daily Hours: {request.daily_study_hours}
+{'='*60}\n""")
+        
+        if not exam_planner:
+            logger.error("❌ Exam planner not initialized!")
+            raise HTTPException(status_code=500, detail="Exam planner not initialized")
+        
+        # Check cache first - build key with all parameters
+        subjects_str = ','.join(sorted(request.subjects))
+        topics_str = ','.join(sorted(request.topics))
+        extra_params = f"{request.exam_date}_{request.exam_board}_{subjects_str}_{topics_str}_{request.daily_study_hours}"
+        
+        cache_key = build_cache_key(
+            endpoint="exam_plan",
+            grade=request.grade,
+            subject=subjects_str[:50],  # Truncate for key
+            topic=topics_str[:50],  # Truncate for key
+            extra=extra_params
+        )
+        
+        cached_response = get_from_cache(cache_key)
+        if cached_response:
+            logger.info(f"⚡ CACHE HIT - Returning cached exam plan ({cached_response['metadata']['totalChapters']} chapters)")
+            return cached_response
+        
+        logger.info("🔄 Cache miss - Generating new exam plan...")
+        
+        # Analyze time allocation
+        time_analysis = exam_planner.analyze_time_allocation(
+            request.exam_date,
+            request.current_date or datetime.now().isoformat()
+        )
+        
+        logger.info(f"⏰ Time Analysis: {time_analysis['totalDays']} days ({time_analysis['studyDays']} study + {time_analysis['revisionDays']} revision)")
+        
+        # Prioritize chapters
+        chapter_priorities = exam_planner.prioritize_chapters(
+            request.subjects,
+            request.topics,
+            request.grade
+        )
+        
+        logger.info(f"📊 Prioritized {len(chapter_priorities)} chapters")
+        
+        # Generate daily plans
+        daily_plans = await exam_planner.generate_daily_plans(
+            time_analysis=time_analysis,
+            chapter_priorities=chapter_priorities,
+            subjects=request.subjects,
+            topics=request.topics,
+            daily_study_hours=request.daily_study_hours,
+            grade=request.grade,
+            exam_board=request.exam_board
+        )
+        
+        logger.info(f"✅ Generated {len(daily_plans)} daily plans")
+        
+        # Build response
+        response_data = {
+            "time_analysis": time_analysis,
+            "chapter_priorities": chapter_priorities,
+            "daily_plans": daily_plans,
+            "metadata": {
+                "totalChapters": len(chapter_priorities),
+                "totalTopics": len(request.topics),
+                "estimatedTotalHours": time_analysis["studyDays"] * request.daily_study_hours
+            }
+        }
+        
+        # Cache the response
+        set_cache(cache_key, response_data)
+        
+        logger.info(f"""\n{'='*60}
+✅ EXAM PLAN GENERATION COMPLETE
+{'='*60}
+Days: {time_analysis['totalDays']} | Chapters: {len(chapter_priorities)}
+{'='*60}\n""")
+        
+        return response_data
+        
+    except ValueError as e:
+        logger.error(f"❌ Validation error: {str(e)}")
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"""\n{'='*60}
+❌ EXAM PLAN GENERATION FAILED
+{'='*60}
+Error: {str(e)}
+Type: {type(e).__name__}
+{'='*60}\n""")
+        import traceback
+        logger.error(f"Stack trace:\n{traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/exam-planning/learning-kit", response_model=LearningKitResponse)
+async def generate_learning_kit(request: LearningKitRequest):
+    """
+    Generate comprehensive learning kit for a specific day using RAG + Gemini.
+    
+    Includes: notes, derivations, formulas, PYQs, tips, and common mistakes.
+    Uses NCERT PDF content through RAG system.
+    """
+    try:
+        logger.info(f"""\n{'='*60}
+📖 LEARNING KIT GENERATION REQUEST
+{'='*60}
+Day: {request.day} | Grade: {request.grade} | Board: {request.exam_board}
+Subjects: {', '.join([s['name'] for s in request.subjects])}
+{'='*60}\n""")
+        
+        if not exam_planner:
+            logger.error("❌ Exam planner not initialized!")
+            raise HTTPException(status_code=500, detail="Exam planner not initialized")
+        
+        # Build cache key
+        subjects_info = ','.join([f"{s['name']}:{','.join(s['chapters'])}" for s in request.subjects])
+        extra_params = f"day{request.day}_{request.exam_board}_{subjects_info}"
+        
+        cache_key = build_cache_key(
+            endpoint="learning_kit",
+            grade=request.grade,
+            subject=request.subjects[0]['name'] if request.subjects else 'general',
+            topic=subjects_info[:50],
+            extra=extra_params
+        )
+        
+        cached_response = get_from_cache(cache_key)
+        if cached_response:
+            logger.info(f"⚡ CACHE HIT - Returning cached learning kit (Day {request.day})")
+            return cached_response
+        
+        logger.info("🔄 Cache miss - Generating new learning kit...")
+        
+        # Generate learning kit
+        learning_kit = await exam_planner.generate_learning_kit(
+            day=request.day,
+            subjects=request.subjects,
+            grade=request.grade,
+            exam_board=request.exam_board
+        )
+        
+        # Ensure commonMistakes field exists (for alias)
+        if 'commonMistakes' not in learning_kit:
+            learning_kit['commonMistakes'] = learning_kit.get('common_mistakes', [])
+        
+        # Cache the response
+        set_cache(cache_key, learning_kit)
+        
+        logger.info(f"""\n{'='*60}
+✅ LEARNING KIT GENERATION COMPLETE
+{'='*60}
+Day: {request.day}
+Derivations: {len(learning_kit.get('derivations', []))}
+Formulas: {len(learning_kit.get('formulas', []))}
+PYQs: {len(learning_kit.get('pyqs', []))}
+Tips: {len(learning_kit.get('tips', []))}
+{'='*60}\n""")
+        
+        return learning_kit
+        
+    except Exception as e:
+        logger.error(f"""\n{'='*60}
+❌ LEARNING KIT GENERATION FAILED
+{'='*60}
+Error: {str(e)}
+Type: {type(e).__name__}
+{'='*60}\n""")
+        import traceback
+        logger.error(f"Stack trace:\n{traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================================================
+# ERROR HANDLERS
+# ============================================================================
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request, exc):
