@@ -15,6 +15,9 @@ import FlashcardsPage from "./pages/FlashcardsPage";
 import MasteryPage from "./pages/MasteryPage";
 import NotFound from "./pages/NotFound";
 import OpticsPuzzle from "./pages/gamified/OpticsPuzzle";
+import ChemistryChallenge from "./pages/gamified/ChemistryChallenge";
+import ChemistryPage from "./pages/ChemistryPage";
+import UploadAndLearn from "./pages/UploadAndLearn";
 import { toast } from "sonner";
 
 const queryClient = new QueryClient();
@@ -41,14 +44,17 @@ const App = () => (
         <StudyRoomManager />
         <Routes>
           <Route path="/optics-puzzle" element={<ProtectedRoute><OpticsPuzzle /></ProtectedRoute>} />
+          <Route path="/chemistry-challenge" element={<ProtectedRoute><ChemistryChallenge /></ProtectedRoute>} />
           <Route path="/" element={<ProtectedRoute><HomePage /></ProtectedRoute>} />
           <Route path="/plan" element={<ProtectedRoute><LearningPlanPage /></ProtectedRoute>} />
           <Route path="/optics" element={<ProtectedRoute><OpticsPage /></ProtectedRoute>} />
+          <Route path="/chemistry" element={<ProtectedRoute><ChemistryPage /></ProtectedRoute>} />
           <Route path="/simulation" element={<ProtectedRoute><SimulationPage /></ProtectedRoute>} />
           <Route path="/quiz" element={<ProtectedRoute><QuizPage /></ProtectedRoute>} />
           <Route path="/reflection" element={<ProtectedRoute><ReflectionPage /></ProtectedRoute>} />
           <Route path="/flashcards" element={<ProtectedRoute><FlashcardsPage /></ProtectedRoute>} />
           <Route path="/mastery" element={<ProtectedRoute><MasteryPage /></ProtectedRoute>} />
+          <Route path="/upload-and-learn" element={<ProtectedRoute><UploadAndLearn /></ProtectedRoute>} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

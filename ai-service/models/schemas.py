@@ -172,3 +172,13 @@ class RAGResult(BaseModel):
     documents: List[str]
     metadatas: List[Dict[str, Any]]
     distances: List[float]
+
+class UploadAndLearnResponse(BaseModel):
+    is_ncert: bool = Field(..., alias="is_ncert")
+    grade: Optional[str] = Field(None, alias="class")
+    subject: Optional[str] = None
+    chapter: Optional[str] = None
+    answer: Optional[str] = None
+    extracted_question: str = Field(..., alias="extracted_question")
+    status: str = "success" # "success" or "unsupported"
+    message: Optional[str] = None

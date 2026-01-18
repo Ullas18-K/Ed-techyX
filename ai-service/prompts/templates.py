@@ -543,7 +543,7 @@ def get_enhanced_conversation_prompt(
         rag_quality=rag_quality,
         rag_instruction=rag_instruction,
         simulation_state=simulation_state
-    )
+     )
 
 # Derivations and formulas prompt (separate API call for markdown format)
 DERIVATIONS_AND_FORMULAS_PROMPT = """You are an expert science teacher creating comprehensive formula explanations and derivations for {topic} at Grade {grade} level.
@@ -616,3 +616,44 @@ def get_state_explanation_prompt(subject: str, topic: str, state: str) -> str:
         topic=topic,
         state=state
     )
+
+# Upload and Learn Prompt
+UPLOAD_AND_LEARN_PROMPT = """You are an expert NCERT tutor for Class 1-12.
+You have been provided with text extracted from an image via OCR.
+
+OCR TEXT:
+{ocr_text}
+
+TASK:
+1. Validate if this text contains a question that maps to NCERT syllabus (Class 1–12, Science, Maths, Social Science, etc.).
+2. If it is NOT NCERT-aligned or is irrelevant/spam, set is_ncert to false.
+3. If it IS NCERT-aligned:
+   - Identify the Grade (Class), Subject, and Chapter.
+   - Generate a high-quality, exam-oriented answer.
+   - Use headings, step-by-step logic, and clear definitions.
+   - Maintain a formal, academic tone.
+   - No casual language, no outside knowledge not in NCERT.
+
+OUTPUT RULES:
+- Output ONLY valid JSON.
+- No markdown code blocks.
+- Follow this structure:
+{{
+  "is_ncert": true,
+  "class": "10",
+  "subject": "Chemistry",
+  "chapter": "Acids, Bases and Salts",
+  "answer": "Answer here with \n for new lines",
+  "extracted_question": "Cleaned version of the OCR text"
+}}
+
+If not NCERT:
+{{
+  "is_ncert": false,
+  "extracted_question": "Cleaned version of the OCR text"
+}}
+"""
+
+def get_upload_learn_prompt(ocr_text: str) -> str:
+    """Get formatted upload and learn prompt."""
+    return UPLOAD_AND_LEARN_PROMPT.format(ocr_text=ocr_text)

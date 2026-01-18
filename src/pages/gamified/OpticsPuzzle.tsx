@@ -339,28 +339,36 @@ export default function OpticsPuzzle() {
         const m2Pos = { x: W - 100, y: 100 };
         const target = { x: W - 100, y: H - 100 };
 
-        ctx.fillStyle = '#334155';
+        // Background grid/box
+        ctx.fillStyle = '#1e293b';
         ctx.fillRect(150, 150, W - 300, H - 300);
-        ctx.strokeStyle = '#475569';
+        ctx.strokeStyle = '#334155';
+        ctx.lineWidth = 1;
         ctx.strokeRect(150, 150, W - 300, H - 300);
 
+        // Target Sensor with glow
+        ctx.shadowBlur = 20;
+        ctx.shadowColor = '#ef4444';
         ctx.beginPath();
-        ctx.arc(target.x, target.y, 15, 0, Math.PI * 2);
+        ctx.arc(target.x, target.y, 18, 0, Math.PI * 2);
         ctx.fillStyle = '#ef4444'; ctx.fill();
-        ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.font = '10px sans-serif';
-        ctx.fillText("SENSOR", target.x, target.y + 25);
+        ctx.shadowBlur = 0;
 
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 10px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText("SENSOR", target.x, target.y + 35);
+
+        // Laser Source
         ctx.fillStyle = '#22c55e';
-        ctx.fillRect(src.x - 10, src.y - 10, 20, 20);
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = '#22c55e';
+        ctx.fillRect(src.x - 15, src.y - 15, 30, 30);
+        ctx.shadowBlur = 0;
 
         const drawMirror = (x: number, y: number, angle: number, label: string) => {
             ctx.save();
             ctx.translate(x, y);
-            // Visual rotation logic:
-            // Input 0 -> 0 (Vertical)
-            // Input 45 -> 135 (Backslash \). Reflects Up->Right. Correct Physics placement.
-            // Input 90 -> 90 (Horizontal)
-            // Input 135 -> 45 (Forward Slash /). Reflects Up->Left.
 
             let rotation = 0;
             if (angle === 45) rotation = 135;
@@ -368,52 +376,83 @@ export default function OpticsPuzzle() {
             else rotation = angle;
 
             ctx.rotate((rotation * Math.PI) / 180);
-            ctx.fillStyle = '#94a3b8'; ctx.fillRect(-25, -2, 50, 4);
-            ctx.fillStyle = '#fff'; ctx.fillRect(-25, -2, 50, 1);
+
+            // Mirror body
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = 'rgba(255,255,255,0.3)';
+            const mirrorGradient = ctx.createLinearGradient(-25, 0, 25, 0);
+            mirrorGradient.addColorStop(0, '#94a3b8');
+            mirrorGradient.addColorStop(0.5, '#f8fafc');
+            mirrorGradient.addColorStop(1, '#94a3b8');
+            ctx.fillStyle = mirrorGradient;
+            ctx.fillRect(-25, -3, 50, 6);
+
+            // Reflective surface
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(-25, -3, 50, 2);
+
             ctx.restore();
-            ctx.fillStyle = '#64748b'; ctx.font = '12px sans-serif';
-            ctx.fillText(label, x - 10, y - 40);
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = '#94a3b8'; ctx.font = 'bold 12px sans-serif';
+            ctx.fillText(label, x, y - 45);
         };
 
         drawMirror(m1Pos.x, m1Pos.y, l1.m1Angle, "M1");
         drawMirror(m2Pos.x, m2Pos.y, l1.m2Angle, "M2");
 
-        // RAY TRACING
+        // LASER RAY TRACING
         ctx.beginPath();
         ctx.moveTo(src.x, src.y);
 
         let path = [{ x: src.x, y: src.y }];
         let hitM1 = false;
-
-        ctx.strokeStyle = '#ef4444';
-        ctx.lineWidth = 2;
-        ctx.shadowBlur = 10; ctx.shadowColor = '#ef4444';
+        let hitM2 = false;
 
         // Ray 1: Up
-        if (l1.m1Angle === 45) { // Correct M1 (Visually \)
+        if (l1.m1Angle === 45) {
             path.push(m1Pos);
             hitM1 = true;
-        } else if (l1.m1Angle === 135) { // Left deflection
-            path.push(m1Pos);
-            // Ray goes left?
         } else {
-            path.push({ x: src.x, y: 0 }); // Miss Top
+            path.push({ x: src.x, y: 0 });
         }
 
         if (hitM1) {
             // Ray 2: Right
-            if (l1.m2Angle === 45) { // Correct M2 (Visually \)
+            if (l1.m2Angle === 45) {
                 path.push(m2Pos);
-                path.push(target); // Success (Down)
+                path.push(target);
+                hitM2 = true;
             } else {
-                path.push({ x: W, y: m1Pos.y }); // Miss right
+                path.push({ x: W, y: m1Pos.y });
             }
         }
 
-        if (path.length > 0) {
-            ctx.lineTo(path[1].x, path[1].y);
-            if (path[2]) ctx.lineTo(path[2].x, path[2].y);
-            if (path[3]) ctx.lineTo(path[3].x, path[3].y);
+        // Draw Laser Beam with Glow
+        ctx.strokeStyle = '#ef4444';
+        ctx.lineWidth = 3;
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = '#ef4444';
+
+        ctx.beginPath();
+        ctx.moveTo(path[0].x, path[0].y);
+        for (let i = 1; i < path.length; i++) {
+            ctx.lineTo(path[i].x, path[i].y);
+        }
+        ctx.stroke();
+
+        // Inner Beam
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 1;
+        ctx.shadowBlur = 0;
+        ctx.stroke();
+
+        if (hitM2) {
+            // Success hit effect
+            ctx.shadowBlur = 30;
+            ctx.shadowColor = '#fff';
+            ctx.beginPath();
+            ctx.arc(target.x, target.y, 22 + Math.sin(Date.now() / 100) * 3, 0, Math.PI * 2);
+            ctx.strokeStyle = '#fff';
             ctx.stroke();
         }
         ctx.shadowBlur = 0;
@@ -424,33 +463,52 @@ export default function OpticsPuzzle() {
         const lensX = W / 2;
         const screenX = W - 50;
 
-        ctx.strokeStyle = '#334155'; ctx.setLineDash([5, 5]);
-        ctx.beginPath(); ctx.moveTo(0, H / 2); ctx.lineTo(W, H / 2); ctx.stroke(); ctx.setLineDash([]);
+        // Optical Axis
+        ctx.strokeStyle = '#334155'; ctx.setLineDash([8, 8]);
+        ctx.beginPath(); ctx.moveTo(0, srcY); ctx.lineTo(W, srcY); ctx.stroke(); ctx.setLineDash([]);
 
-        const srcX = l2.lensPos === 'near' ? lensX - 100 : l2.lensPos === 'mid' ? lensX - 200 : lensX - 300;
-        ctx.fillStyle = '#fbbf24';
-        ctx.beginPath(); ctx.arc(srcX, srcY, 8, 0, Math.PI * 2); ctx.fill();
+        const srcX = l2.lensPos === 'near' ? lensX - 120 : l2.lensPos === 'mid' ? lensX - 220 : lensX - 320;
 
-        ctx.fillStyle = 'rgba(100, 200, 255, 0.2)';
-        ctx.strokeStyle = 'rgba(100, 200, 255, 0.8)';
+        // Light Source
+        const sourceGradient = ctx.createRadialGradient(srcX, srcY, 2, srcX, srcY, 12);
+        sourceGradient.addColorStop(0, '#fff');
+        sourceGradient.addColorStop(0.5, '#fbbf24');
+        sourceGradient.addColorStop(1, 'transparent');
+        ctx.fillStyle = sourceGradient;
+        ctx.beginPath(); ctx.arc(srcX, srcY, 12, 0, Math.PI * 2); ctx.fill();
+
+        // Lens
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = 'rgba(147, 197, 253, 0.5)';
+        ctx.fillStyle = 'rgba(191, 219, 254, 0.3)';
+        ctx.strokeStyle = '#60a5fa';
+        ctx.lineWidth = 2;
+
         ctx.beginPath();
         if (l2.lensType === 'glass_convex') {
-            ctx.ellipse(lensX, srcY, 10, 80, 0, 0, Math.PI * 2);
+            ctx.ellipse(lensX, srcY, 12, 90, 0, 0, Math.PI * 2);
         } else if (l2.lensType === 'glass_concave') {
-            ctx.moveTo(lensX - 5, srcY - 80); ctx.lineTo(lensX + 5, srcY - 80);
-            ctx.lineTo(lensX, srcY); ctx.lineTo(lensX + 5, srcY + 80);
-            ctx.lineTo(lensX - 5, srcY + 80); ctx.lineTo(lensX - 10, srcY);
+            ctx.moveTo(lensX - 8, srcY - 90); ctx.lineTo(lensX + 8, srcY - 90);
+            ctx.quadraticCurveTo(lensX + 2, srcY, lensX + 8, srcY + 90);
+            ctx.lineTo(lensX - 8, srcY + 90);
+            ctx.quadraticCurveTo(lensX - 2, srcY, lensX - 8, srcY - 90);
         }
         ctx.fill(); ctx.stroke();
+        ctx.shadowBlur = 0;
 
-        ctx.fillStyle = '#475569';
-        ctx.fillRect(screenX, srcY - 50, 10, 100);
+        // Screen Sensor
+        ctx.fillStyle = '#1e293b';
+        ctx.fillRect(screenX, srcY - 60, 15, 120);
         ctx.fillStyle = '#ef4444';
+        ctx.shadowBlur = 10; ctx.shadowColor = '#ef4444';
         ctx.fillRect(screenX, srcY - 5, 10, 10);
+        ctx.shadowBlur = 0;
 
-        ctx.strokeStyle = '#fbbf24'; ctx.lineWidth = 1;
+        // RAY TRACING
+        ctx.strokeStyle = '#fbbf24'; ctx.lineWidth = 2;
+        ctx.shadowBlur = 8; ctx.shadowColor = '#fbbf24';
 
-        const rays = [-0.2, -0.1, 0, 0.1, 0.2];
+        const rays = [-0.15, -0.07, 0, 0.07, 0.15];
         rays.forEach(angle => {
             ctx.beginPath();
             ctx.moveTo(srcX, srcY);
@@ -459,21 +517,17 @@ export default function OpticsPuzzle() {
             ctx.lineTo(lensX, hitY);
 
             if (l2.lensType === 'glass_convex') {
-                const f = 150;
+                const f = 160;
                 const do_ = lensX - srcX;
-                const di = (f * do_) / (do_ - f);
 
-                if (do_ === f) {
-                    ctx.lineTo(W, hitY);
-                } else if (do_ < f) {
-                    ctx.lineTo(W, hitY + (hitY - srcY) * 2);
-                } else {
+                if (do_ > f) {
+                    const di = (f * do_) / (do_ - f);
                     const focalPointX = lensX + di;
-                    ctx.lineTo(focalPointX, srcY);
                     const slope = (srcY - hitY) / (focalPointX - lensX);
-                    // Continue ray to screen or beyond
                     const yAtScreen = srcY + slope * (screenX - focalPointX);
                     ctx.lineTo(screenX, yAtScreen);
+                } else {
+                    ctx.lineTo(W, hitY + (hitY - srcY) * 2);
                 }
             } else if (l2.lensType === 'glass_concave') {
                 ctx.lineTo(W, hitY + (hitY - srcY) * 2);
@@ -482,59 +536,82 @@ export default function OpticsPuzzle() {
             }
             ctx.stroke();
         });
+        ctx.shadowBlur = 0;
     };
 
     const renderLevel3 = (ctx: CanvasRenderingContext2D, W: number, H: number) => {
         const cy = H / 2;
 
-        // Draw Fiber
+        // Draw Optical Fiber with Cladding
         ctx.beginPath();
-        ctx.lineWidth = 40;
-        ctx.lineCap = 'round';
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
-        ctx.moveTo(100, cy); ctx.lineTo(W - 100, cy); // Full width
-        ctx.stroke();
+        const fiberGradient = ctx.createLinearGradient(0, cy - 30, 0, cy + 30);
+        fiberGradient.addColorStop(0, '#0f172a');
+        fiberGradient.addColorStop(0.5, '#1e293b');
+        fiberGradient.addColorStop(1, '#0f172a');
+        ctx.fillStyle = fiberGradient;
+        ctx.fillRect(100, cy - 30, W - 200, 60);
 
-        ctx.lineWidth = 2; ctx.strokeStyle = '#fff';
-        ctx.beginPath(); ctx.moveTo(100, cy - 20); ctx.lineTo(W - 100, cy - 20); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(100, cy + 20); ctx.lineTo(W - 100, cy + 20); ctx.stroke();
+        ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(100, cy - 30, W - 200, 60);
+
+        // Core
+        ctx.fillStyle = 'rgba(147, 197, 253, 0.1)';
+        ctx.fillRect(100, cy - 15, W - 200, 30);
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(100, cy - 15); ctx.lineTo(W - 100, cy - 15); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(100, cy + 15); ctx.lineTo(W - 100, cy + 15); ctx.stroke();
 
         const n = l3.coreMaterial === 'diamond' ? 2.4 : l3.coreMaterial === 'glass' ? 1.5 : 1.33;
         const criticalAngleDeg = Math.asin(1.0 / n) * (180 / Math.PI);
 
+        // WAVEGUIDE RAY
         ctx.strokeStyle = '#a855f7';
         ctx.lineWidth = 3;
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = '#a855f7';
         ctx.beginPath();
         ctx.moveTo(100, cy);
 
-        const b1x = 300;
-        const b1y = cy - 20;
-
-        ctx.lineTo(b1x, b1y);
+        const segments = 4;
+        const segW = (W - 200) / segments;
+        let x = 100;
+        let y = cy;
 
         if (l3.incidentAngle > criticalAngleDeg) {
-            // Bounce 1 -> 2
-            const b2x = 500;
-            const b2y = cy + 20;
-            ctx.lineTo(b2x, b2y);
-
-            // Bounce 2 -> 3 (Exit)
-            const b3x = 700;
-            const b3y = cy - 20;
-            ctx.lineTo(b3x, b3y);
-
-            // Exit ray out
-            ctx.lineTo(W, cy + 50); // Angle out
-
-            ctx.stroke();
-            ctx.shadowColor = '#a855f7'; ctx.shadowBlur = 10; ctx.stroke(); ctx.shadowBlur = 0;
+            for (let i = 0; i < segments; i++) {
+                x += segW;
+                y = (i % 2 === 0) ? cy - 15 : cy + 15;
+                ctx.lineTo(x, y);
+            }
+            ctx.lineTo(W, cy + (Math.random() - 0.5) * 40);
         } else {
-            // Leaks at b1
-            ctx.lineTo(b1x + 40, b1y - 80);
-            ctx.stroke();
-            ctx.beginPath(); ctx.arc(b1x, b1y, 10, 0, Math.PI * 2);
-            ctx.fillStyle = 'rgba(255, 0, 0, 0.5)'; ctx.fill();
+            // Leaks at first bounce
+            ctx.lineTo(100 + segW, cy - 15);
+            ctx.lineTo(100 + segW + 50, cy - 80);
+
+            // Leak point effect
+            ctx.save();
+            ctx.shadowBlur = 20;
+            ctx.shadowColor = '#ef4444';
+            ctx.fillStyle = '#ef4444';
+            ctx.beginPath(); ctx.arc(100 + segW, cy - 15, 6, 0, Math.PI * 2); ctx.fill();
+            ctx.restore();
         }
+        ctx.stroke();
+
+        // Inner beam
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 1;
+        ctx.shadowBlur = 0;
+        ctx.stroke();
+
+        // Info label
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = 'bold 12px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(`Critical Angle: ${criticalAngleDeg.toFixed(1)}°`, W / 2, cy + 80);
     };
 
     // --- GAME ACTIONS ---
@@ -642,7 +719,7 @@ export default function OpticsPuzzle() {
     const updateL1 = (updates: Partial<Level1State>) => setL1(prev => ({ ...prev, ...updates }));
 
     return (
-        <div className="w-full h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-gray-100 flex flex-col text-gray-800 font-sans overflow-hidden">
+        <div className="w-screen h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-gray-100 flex flex-col text-gray-800 font-sans overflow-hidden fixed inset-0">
 
             {/* GAME START OVERLAY - FLOATING */}
             {!gameStarted && (

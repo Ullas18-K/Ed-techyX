@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Mic, MicOff, Send, Sparkles, X, Wand2 } from 'lucide-react';
+import { Mic, MicOff, Send, Sparkles, X, Wand2, Camera } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { sampleQuestions } from '@/lib/mockData';
@@ -14,6 +15,7 @@ interface InputMethodsProps {
 }
 
 export function InputMethods({ onSubmit }: InputMethodsProps) {
+  const navigate = useNavigate();
   const { currentLanguage } = useTranslate();
   const { translate } = useTranslationStore();
   const [translatedPlaceholder, setTranslatedPlaceholder] = useState("Type your question here... (e.g., Why is photosynthesis important?)");
@@ -159,6 +161,16 @@ export function InputMethods({ onSubmit }: InputMethodsProps) {
               ) : (
                 <Mic className="w-4 h-4" />
               )}
+            </Button>
+
+            {/* Scan button */}
+            <Button
+              variant="glass"
+              size="icon-lg"
+              onClick={() => navigate('/upload-and-learn')}
+              className="rounded-lg group"
+            >
+              <Camera className="w-4 h-4 group-hover:scale-110 transition-transform" />
             </Button>
           </div>
 

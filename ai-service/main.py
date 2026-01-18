@@ -15,7 +15,8 @@ from config.settings import settings
 from models.schemas import (
     ScenarioRequest, ScenarioResponse,
     ConversationRequest, ConversationResponse,
-    QuizRequest, QuizResponse
+    QuizRequest, QuizResponse,
+    UploadAndLearnResponse
 )
 from models.pyq_schemas import PYQRequest, PYQResponse
 from rag.retriever import RAGRetriever
@@ -24,6 +25,7 @@ from agents.scenario_gen import ScenarioGenerator
 from agents.conversation import ConversationGuide
 from agents.pyq_generator import PYQGenerator
 from agents.visual_flashcards import VisualFlashcardGenerator
+from agents.upload_learn_agent import UploadLearnAgent
 from utils.pyq_ingestion import ingest_all_pyqs
 from utils.tts_service import tts_service
 from utils.ai_response_cache import build_cache_key, get_from_cache, set_cache
@@ -67,11 +69,12 @@ scenario_generator: Optional[ScenarioGenerator] = None
 conversation_guide: Optional[ConversationGuide] = None
 pyq_generator: Optional[PYQGenerator] = None
 visual_flashcard_generator: Optional[VisualFlashcardGenerator] = None
+upload_learn_agent: Optional[UploadLearnAgent] = None
 
 @app.on_event("startup")
 async def startup_event():
     """Initialize services on startup."""
-    global rag_retriever, scenario_generator, conversation_guide, pyq_generator, visual_flashcard_generator
+    global rag_retriever, scenario_generator, conversation_guide, pyq_generator, visual_flashcard_generator, upload_learn_agent
     
     logger.info("Starting AI Service...")
     logger.info(f"Environment: {settings.ENVIRONMENT}")
@@ -87,6 +90,7 @@ async def startup_event():
         conversation_guide = ConversationGuide(rag_retriever)  # Pass RAG to conversation guide
         pyq_generator = PYQGenerator(rag_retriever)  # Initialize PYQ generator
         visual_flashcard_generator = VisualFlashcardGenerator(rag_retriever)  # Initialize flashcard generator
+        upload_learn_agent = UploadLearnAgent() # Initialize OCR agent
         
         logger.info("All agents initialized successfully")
         
@@ -625,6 +629,40 @@ Type: {type(e).__name__}
 {'='*60}\n""")
         import traceback
         logger.error(f"Stack trace:\n{traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# =====================================================
+# Upload & Learn Endpoint (OCR + NCERT Answer)
+# =====================================================
+
+from fastapi import File, UploadFile
+
+@app.post("/api/upload-and-learn", response_model=UploadAndLearnResponse)
+async def upload_and_learn(image: UploadFile = File(...)):
+    """
+    Handle image upload, OCR extraction, and NCERT-based analysis.
+    """
+    try:
+        if not upload_learn_agent:
+            raise HTTPException(status_code=500, detail="UploadLearnAgent not initialized")
+            
+        # Validate format
+        if not image.content_type.startswith("image/"):
+            raise HTTPException(status_code=400, detail="File must be an image")
+            
+        # Read image bytes
+        content = await image.read()
+        
+        logger.info(f"Received image: {image.filename} ({len(content)} bytes)")
+        
+        # Analyze image
+        response = await upload_learn_agent.analyze_image(content)
+        
+        return response
+        
+    except Exception as e:
+        logger.error(f"Error in upload-and-learn endpoint: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
