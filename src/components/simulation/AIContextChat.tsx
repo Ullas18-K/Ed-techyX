@@ -12,6 +12,10 @@ import { useLearningStore } from '@/lib/learningStore';
 import { Translate } from '@/components/Translate';
 import { useTranslationStore } from '@/lib/translationStore';
 import { useSpeechRecognition } from 'react-speech-kit';
+import ReactMarkdown from 'react-markdown';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import 'katex/dist/katex.min.css';
 
 const TTS_URL = 'http://localhost:8001/api/tts/synthesize';
 
@@ -319,9 +323,20 @@ export function AIContextChat({ scenarioId, currentTaskId, context, onTaskComple
                     ? 'bg-primary text-white rounded-tr-none'
                     : 'bg-white/95 text-slate-800 rounded-tl-none font-medium'
                 )}>
-                  <p className="text-[13px] leading-relaxed">
-                    {message.content}
-                  </p>
+                  {message.role === 'ai' ? (
+                    <div className="text-[13px] leading-relaxed prose prose-sm max-w-none prose-headings:text-slate-800 prose-p:text-slate-800 prose-strong:text-slate-900 prose-ul:text-slate-800 prose-ol:text-slate-800 prose-li:text-slate-800 prose-a:text-primary">
+                      <ReactMarkdown
+                        remarkPlugins={[remarkMath]}
+                        rehypePlugins={[rehypeKatex]}
+                      >
+                        {message.content}
+                      </ReactMarkdown>
+                    </div>
+                  ) : (
+                    <p className="text-[13px] leading-relaxed">
+                      {message.content}
+                    </p>
+                  )}
                   <div className={cn(
                     "flex items-center gap-1.5 mt-2",
                     message.role === 'user' ? 'text-white/60' : 'text-slate-400'

@@ -358,7 +358,7 @@ Grade {grade} Indian curriculum. Ensure accuracy and educational value.
                 "temperature": 0.7,  # Balanced creativity
                 "top_p": 0.9,
                 "top_k": 40,
-                "max_output_tokens": 500,  # Concise responses
+                "max_output_tokens": 2048,  # Allow complete, detailed responses
             }
             
             response = self.model.generate_content(
@@ -410,7 +410,7 @@ Make them specific to {topic} and encourage exploration.
                 prompt,
                 generation_config={
                     "temperature": 0.8,
-                    "max_output_tokens": 100
+                    "max_output_tokens": 200
                 }
             )
             

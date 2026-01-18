@@ -462,9 +462,14 @@ export function SimulationScreen({ onComplete }: SimulationScreenProps) {
                               {question.answer && (
                                 <div>
                                   <h5 className="text-xs font-semibold text-primary mb-1">Answer:</h5>
-                                  <p className="text-sm text-foreground bg-success/5 p-2 rounded">
-                                    {question.answer}
-                                  </p>
+                                  <div className="text-sm text-foreground bg-success/5 p-3 rounded prose prose-sm max-w-none dark:prose-invert prose-headings:text-foreground prose-p:text-foreground prose-strong:text-foreground prose-ul:text-foreground prose-ol:text-foreground prose-li:text-foreground">
+                                    <ReactMarkdown
+                                      remarkPlugins={[remarkMath]}
+                                      rehypePlugins={[rehypeKatex]}
+                                    >
+                                      {question.answer}
+                                    </ReactMarkdown>
+                                  </div>
                                 </div>
                               )}
 
@@ -472,9 +477,14 @@ export function SimulationScreen({ onComplete }: SimulationScreenProps) {
                               {question.answerExplanation && (
                                 <div>
                                   <h5 className="text-xs font-semibold text-primary mb-1">Explanation:</h5>
-                                  <p className="text-sm text-muted-foreground bg-accent/20 p-2 rounded leading-relaxed">
-                                    {question.answerExplanation}
-                                  </p>
+                                  <div className="text-sm text-muted-foreground bg-accent/20 p-3 rounded leading-relaxed prose prose-sm max-w-none dark:prose-invert prose-headings:text-foreground prose-p:text-muted-foreground prose-strong:text-foreground prose-ul:text-muted-foreground prose-ol:text-muted-foreground prose-li:text-muted-foreground">
+                                    <ReactMarkdown
+                                      remarkPlugins={[remarkMath]}
+                                      rehypeKatex={[rehypeKatex]}
+                                    >
+                                      {question.answerExplanation}
+                                    </ReactMarkdown>
+                                  </div>
                                 </div>
                               )}
 
