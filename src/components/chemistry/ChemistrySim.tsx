@@ -18,7 +18,8 @@ import {
     ArrowRight,
     Thermometer,
     RefreshCw,
-    Beaker
+    Beaker,
+    CheckCircle2
 } from 'lucide-react';
 
 export const ChemistrySim: React.FC = () => {
@@ -62,6 +63,17 @@ export const ChemistrySim: React.FC = () => {
         completed: completedTasks.includes(t.id),
         locked: index > 0 && !completedTasks.includes(rawTasks[index - 1].id)
     })), [rawTasks, completedTasks]);
+
+    // Check if all tasks are completed
+    const allTasksCompleted = useMemo(() => 
+        rawTasks.length > 0 && rawTasks.every(task => completedTasks.includes(task.id)),
+        [rawTasks, completedTasks]
+    );
+
+    const handleContinue = () => {
+        navigate('/simulation');
+        toast.success('Great work! Proceeding to notes and insights.', { icon: '📚' });
+    };
 
     const handleSkip = (taskId: string) => {
         completeTask(taskId);
@@ -293,6 +305,69 @@ export const ChemistrySim: React.FC = () => {
         >
             <div className="absolute inset-0 bg-gradient-to-b from-slate-900 to-slate-950">
                 <ChemistryCanvas />
+                
+                {/* Completion Overlay with Continue Button */}
+                <AnimatePresence>
+                    {allTasksCompleted && (
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50"
+                        >
+                            <motion.div
+                                initial={{ scale: 0.8, y: 50 }}
+                                animate={{ scale: 1, y: 0 }}
+                                exit={{ scale: 0.8, y: 50 }}
+                                transition={{ type: 'spring', damping: 20 }}
+                                className="bg-white rounded-3xl shadow-2xl p-8 max-w-md w-full mx-4"
+                            >
+                                <div className="text-center">
+                                    {/* Success Icon */}
+                                    <motion.div
+                                        initial={{ scale: 0 }}
+                                        animate={{ scale: 1 }}
+                                        transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
+                                        className="w-20 h-20 bg-green-100 rounded-full mx-auto mb-6 flex items-center justify-center"
+                                    >
+                                        <CheckCircle2 className="w-12 h-12 text-green-600" />
+                                    </motion.div>
+
+                                    {/* Title */}
+                                    <h2 className="text-3xl font-bold text-gray-900 mb-3">
+                                        <Translate>All Tasks Completed!</Translate>
+                                    </h2>
+
+                                    {/* Description */}
+                                    <p className="text-gray-600 mb-8 text-lg">
+                                        <Translate>Excellent work! You've mastered the chemistry experiments. Ready to review your notes and derivations?</Translate>
+                                    </p>
+
+                                    {/* Continue Button */}
+                                    <Button
+                                        onClick={handleContinue}
+                                        size="lg"
+                                        className="w-full h-14 text-lg font-bold rounded-xl shadow-lg hover:shadow-xl transition-all gap-3"
+                                    >
+                                        <Translate>Continue to Notes</Translate>
+                                        <ArrowRight className="w-5 h-5" />
+                                    </Button>
+
+                                    {/* Secondary Action */}
+                                    <Button
+                                        onClick={reset}
+                                        variant="ghost"
+                                        size="sm"
+                                        className="w-full mt-3 text-gray-500 hover:text-gray-700"
+                                    >
+                                        <RefreshCw className="w-4 h-4 mr-2" />
+                                        <Translate>Reset and Practice Again</Translate>
+                                    </Button>
+                                </div>
+                            </motion.div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </div>
         </UnifiedSimulationLayout>
     );

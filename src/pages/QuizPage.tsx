@@ -74,21 +74,66 @@ const QuizPage = () => {
   };
 
   const handleQuizComplete = useCallback(() => {
+    // Determine which game/challenge to navigate to based on subject/topic
+    const topic = currentScenario?.topic?.toLowerCase() || '';
+    const subject = currentScenario?.subject?.toLowerCase() || '';
+    const simulationType = currentScenario?.simulation?.type?.toLowerCase() || '';
+    const combined = `${topic} ${subject} ${simulationType}`;
+    
+    // Optics-related keywords (check FIRST for priority)
+    const opticsKeywords = [
+      'ray optic', 'geometric optic', 'light', 'mirror', 'lens', 'reflection',
+      'refraction', 'focal', 'image formation', 'concave', 'convex', 'prism',
+      'spherical mirror', 'refract', 'reflect'
+    ];
+    
+    // Chemistry-related keywords (more specific to avoid conflicts)
+    const chemistryKeywords = [
+      'acid', 'base', 'salt', 'chemical reaction', 'chemistry', 
+      'neutralization', 'indicator', 'ph', 'litmus', 'phenolphthalein',
+      'metal oxide', 'hydroxide', 'carbonate', 'bicarbonate',
+      'sulfate', 'chloride', 'nitrate', 'alkali', 'corrosion',
+      'titration', 'precipitation'
+    ];
+    
+    // Check optics FIRST (higher priority for 'ray optics' etc.)
+    const isOptics = opticsKeywords.some(keyword => combined.includes(keyword));
+    
+    // Then check chemistry
+    const isChemistry = !isOptics && chemistryKeywords.some(keyword => combined.includes(keyword));
+    
     // Check if in multiplayer room and if puzzle is enabled
     if (roomId && enableOpticsPuzzle) {
-      // In multiplayer with puzzle enabled - go to puzzle (compulsory)
-      navigate('/optics-puzzle');
-      toast.success('Great! Now solve the optics puzzle!');
+      // In multiplayer with puzzle enabled - go to appropriate challenge (compulsory)
+      if (isOptics) {
+        navigate('/optics-puzzle');
+        toast.success('Great! Now solve the optics puzzle!', { icon: '🔬' });
+      } else if (isChemistry) {
+        navigate('/chemistry-challenge');
+        toast.success('Great! Now solve the chemistry challenge!', { icon: '🧪' });
+      } else {
+        navigate('/optics-puzzle');
+        toast.success('Great! Now solve the puzzle!');
+      }
     } else if (roomId && !enableOpticsPuzzle) {
       // In multiplayer but puzzle disabled - skip to reflection
       navigate('/reflection');
       toast.success('Almost done! Time to reflect.');
     } else {
-      // Solo learning - go to puzzle (but it will be skippable)
-      navigate('/optics-puzzle');
-      toast.success('Bonus challenge! Try the optics puzzle or skip to reflection.');
+      // Solo learning - go to appropriate challenge (but it will be skippable)
+      if (isOptics) {
+        navigate('/optics-puzzle');
+        toast.success('Bonus challenge! Try the optics puzzle or skip to reflection.', { icon: '🔬' });
+      } else if (isChemistry) {
+        navigate('/chemistry-challenge');
+        toast.success('Bonus challenge! Try the chemistry challenge or skip to reflection.', { icon: '🧪' });
+      } else {
+        // Default to reflection if no specific challenge
+        navigate('/reflection');
+        toast.success('Quiz complete! Time to reflect on what you learned.');
+      }
     }
-  }, [navigate, roomId, enableOpticsPuzzle]);
+  }, [navigate, roomId, enableOpticsPuzzle, currentScenario]);
 
   return (
     <motion.div 

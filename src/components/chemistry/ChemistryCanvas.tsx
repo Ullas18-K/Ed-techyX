@@ -16,6 +16,7 @@ export const ChemistryCanvas: React.FC = () => {
         color,
         gasProduced,
         bubblesActive,
+        isReacting,
         setColor,
         updateState,
         popTestResult,
@@ -394,11 +395,11 @@ export const ChemistryCanvas: React.FC = () => {
 
                 {/* pH Scale Interface */}
                 {experimentMode === 'ph_scale' && (
-                    <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-12 translate-y-1/2 p-4 bg-slate-900/80 border border-slate-700/50 rounded-2xl backdrop-blur-md shadow-2xl">
+                    <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-12 p-4 bg-slate-900/80 border border-slate-700/50 rounded-2xl backdrop-blur-md shadow-2xl">
                         <div className="text-[10px] text-slate-400 font-bold mb-3 tracking-widest text-center">pH INDICATOR</div>
                         <div className="w-14 h-80 bg-slate-800 rounded-xl p-2 relative shadow-inner">
                             {/* Gradient Background */}
-                            <div className="absolute inset-2 bg-gradient-to-b from-blue-700 via-green-500 via-yellow-400 via-orange-500 to-red-600 rounded-full opacity-90 shadow-lg" />
+                            <div className="absolute inset-2 bg-gradient-to-b from-blue-700 via-yellow-400 to-red-600 rounded-full opacity-90 shadow-lg" />
 
                             {/* Marker Line */}
                             <motion.div

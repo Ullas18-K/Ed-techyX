@@ -29,6 +29,43 @@ export function LearningPlanScreen({ onStart }: LearningPlanScreenProps) {
 
   if (!currentScenario) return null;
 
+  // Determine which simulation page to navigate to based on topic/type
+  const getSimulationRoute = () => {
+    const topic = currentScenario.topic.toLowerCase();
+    const simulationType = currentScenario.simulation?.type?.toLowerCase() || '';
+    const combined = `${topic} ${simulationType}`;
+    
+    // Optics-related keywords (check first for priority)
+    const opticsKeywords = [
+      'ray optic', 'geometric optic', 'light', 'mirror', 'lens', 'reflection',
+      'refraction', 'focal', 'image formation', 'concave', 'convex', 'prism',
+      'spherical mirror', 'refract', 'reflect'
+    ];
+    
+    // Chemistry-related keywords (more specific to avoid conflicts)
+    const chemistryKeywords = [
+      'acid', 'base', 'salt', 'chemical reaction', 'chemistry', 
+      'neutralization', 'indicator', 'ph', 'litmus', 'phenolphthalein',
+      'metal oxide', 'hydroxide', 'carbonate', 'bicarbonate',
+      'sulfate', 'chloride', 'nitrate', 'alkali', 'corrosion',
+      'titration', 'precipitation'
+    ];
+    
+    // Check optics first (higher priority for 'ray optics' etc.)
+    const isOptics = opticsKeywords.some(keyword => combined.includes(keyword));
+    
+    // Check chemistry
+    const isChemistry = chemistryKeywords.some(keyword => combined.includes(keyword));
+    
+    if (isOptics) return '/optics';
+    if (isChemistry) return '/chemistry';
+    
+    // Default fallback
+    return '/simulation';
+  };
+
+  const simulationRoute = getSimulationRoute();
+
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -220,7 +257,7 @@ export function LearningPlanScreen({ onStart }: LearningPlanScreenProps) {
             <Button
               variant="hero"
               size="sm"
-              onClick={() => navigate('/optics')}
+              onClick={() => navigate(simulationRoute)}
               className="gap-2 rounded-lg w-full text-xs h-9"
             >
               <Play className="w-3.5 h-3.5" />
