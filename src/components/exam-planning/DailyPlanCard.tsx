@@ -48,38 +48,44 @@ const TIME_SLOT_ICONS = {
 };
 
 export const DailyPlanCard = ({ dayPlan, planId, isExpanded, onToggle }: DailyPlanCardProps) => {
-  const { fetchDailyContent, isLoadingDailyContent } = useExamPlanningStore();
+  const { fetchDailyContent, isLoadingDailyContent, currentPlan } = useExamPlanningStore();
   const { token } = useAuthStore();
   const [showLearningKit, setShowLearningKit] = useState(false);
 
-  const totalTime = dayPlan.subjects.reduce((sum, s) => sum + s.estimatedTime, 0);
+  // Get the latest dayPlan from the store to ensure we have the updated learningKit
+  const latestDayPlan = currentPlan?.dailyPlans.find(dp => dp.day === dayPlan.day) || dayPlan;
+
+  const totalTime = latestDayPlan.subjects.reduce((sum, s) => sum + s.estimatedTime, 0);
   const hours = Math.floor(totalTime / 60);
   const minutes = totalTime % 60;
 
   const handleLoadLearningKit = async () => {
     // Check if learningKit exists AND has actual data
-    const hasData = dayPlan.learningKit && (
-      dayPlan.learningKit.notes ||
-      (dayPlan.learningKit.derivations && dayPlan.learningKit.derivations.length > 0) ||
-      (dayPlan.learningKit.formulas && dayPlan.learningKit.formulas.length > 0) ||
-      (dayPlan.learningKit.pyqs && dayPlan.learningKit.pyqs.length > 0)
+    const hasData = latestDayPlan.learningKit && (
+      latestDayPlan.learningKit.notes ||
+      (latestDayPlan.learningKit.derivations && latestDayPlan.learningKit.derivations.length > 0) ||
+      (latestDayPlan.learningKit.formulas && latestDayPlan.learningKit.formulas.length > 0) ||
+      (latestDayPlan.learningKit.pyqs && latestDayPlan.learningKit.pyqs.length > 0)
     );
 
+    // Open modal first to show loading state
+    setShowLearningKit(true);
+
     if (!hasData && token) {
-      console.log(`📚 Fetching learning kit for Day ${dayPlan.day}...`);
+      console.log(`📚 Fetching learning kit for Day ${latestDayPlan.day}...`);
       const startTime = Date.now();
       try {
-        await fetchDailyContent(planId, dayPlan.day, token);
+        await fetchDailyContent(planId, latestDayPlan.day, token);
         const duration = Date.now() - startTime;
         const wasCached = duration < 1000; // Sub-second = cache hit
-        console.log(`${wasCached ? '⚡' : '✅'} Learning kit ${wasCached ? 'loaded from cache' : 'generated'} for Day ${dayPlan.day} (${duration}ms)`);
+        console.log(`${wasCached ? '⚡' : '✅'} Learning kit ${wasCached ? 'loaded from cache' : 'generated'} for Day ${latestDayPlan.day} (${duration}ms)`);
       } catch (error) {
-        console.error(`❌ Failed to load learning kit for Day ${dayPlan.day}:`, error);
+        console.error(`❌ Failed to load learning kit for Day ${latestDayPlan.day}:`, error);
+        setShowLearningKit(false); // Close modal on error
       }
     } else if (hasData) {
-      console.log(`⚡ Learning kit already loaded for Day ${dayPlan.day} (pre-generated)`);
+      console.log(`⚡ Learning kit already loaded for Day ${latestDayPlan.day} (pre-generated)`);
     }
-    setShowLearningKit(true);
   };
 
   const formatDate = (dateStr: string) => {
@@ -104,11 +110,11 @@ export const DailyPlanCard = ({ dayPlan, planId, isExpanded, onToggle }: DailyPl
         <div className="flex items-center gap-4">
           <div className="flex flex-col items-center justify-center w-16 h-16 rounded-xl bg-gradient-to-br from-primary/20 to-accent/20 border border-primary/20">
             <span className="text-xs text-muted-foreground">Day</span>
-            <span className="text-xl font-bold text-primary">{dayPlan.day}</span>
+            <span className="text-xl font-bold text-primary">{latestDayPlan.day}</span>
           </div>
 
           <div className="text-left">
-            <h4 className="font-semibold text-foreground">{formatDate(dayPlan.date)}</h4>
+            <h4 className="font-semibold text-foreground">{formatDate(latestDayPlan.date)}</h4>
             <div className="flex items-center gap-2 mt-1">
               <Clock className="w-3 h-3 text-muted-foreground" />
               <span className="text-sm text-muted-foreground">
@@ -117,7 +123,7 @@ export const DailyPlanCard = ({ dayPlan, planId, isExpanded, onToggle }: DailyPl
               <span className="text-muted-foreground">•</span>
               <BookOpen className="w-3 h-3 text-muted-foreground" />
               <span className="text-sm text-muted-foreground">
-                {dayPlan.subjects.length} subject{dayPlan.subjects.length !== 1 ? 's' : ''}
+                {latestDayPlan.subjects.length} subject{latestDayPlan.subjects.length !== 1 ? 's' : ''}
               </span>
             </div>
           </div>
@@ -145,14 +151,14 @@ export const DailyPlanCard = ({ dayPlan, planId, isExpanded, onToggle }: DailyPl
               {/* Rationale */}
               <div className="p-3 rounded-xl bg-accent/10 border border-accent/20">
                 <p className="text-sm text-foreground">
-                  <strong>Why this schedule:</strong> {dayPlan.rationale}
+                  <strong>Why this schedule:</strong> {latestDayPlan.rationale}
                 </p>
               </div>
 
               {/* Subjects */}
               <div className="space-y-3">
                 <h5 className="text-sm font-semibold text-foreground">Today's Schedule</h5>
-                {dayPlan.subjects.map((subject, idx) => (
+                {latestDayPlan.subjects.map((subject, idx) => (
                   <div
                     key={idx}
                     className={`p-3 rounded-xl bg-gradient-to-r ${TIME_SLOT_COLORS[subject.timeSlot as keyof typeof TIME_SLOT_COLORS] || TIME_SLOT_COLORS.morning} border`}
@@ -191,7 +197,7 @@ export const DailyPlanCard = ({ dayPlan, planId, isExpanded, onToggle }: DailyPl
               </div>
 
               {/* Preview */}
-              <DailyPreview preview={dayPlan.preview} />
+              <DailyPreview preview={latestDayPlan.preview} />
 
               {/* Actions */}
               <div className="flex gap-3 pt-2">
@@ -229,10 +235,10 @@ export const DailyPlanCard = ({ dayPlan, planId, isExpanded, onToggle }: DailyPl
                         <p className="text-sm text-muted-foreground">Fetching NCERT content and creating materials</p>
                       </div>
                     </div>
-                  ) : dayPlan.learningKit ? (
+                  ) : latestDayPlan.learningKit ? (
                     <LearningKitContent
-                      learningKit={dayPlan.learningKit}
-                      day={dayPlan.day}
+                      learningKit={latestDayPlan.learningKit}
+                      day={latestDayPlan.day}
                       onClose={() => setShowLearningKit(false)}
                     />
                   ) : null}

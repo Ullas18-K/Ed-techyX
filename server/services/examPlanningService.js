@@ -184,7 +184,7 @@ export async function generateStudyPlan(examPlanData) {
       grade: grade,
       exam_board: examBoard
     }, {
-      timeout: 120000
+      timeout: 3000000
     });
     
     if (response.data) {
@@ -333,7 +333,7 @@ async function buildCompleteLearningKit(dayPlan, examBoard, grade) {
         student_id: 'exam-planner',
         difficulty: 'medium'
       }, {
-        timeout: 120000
+        timeout: 3000000
       });
       
       // Generate practice questions
@@ -344,7 +344,7 @@ async function buildCompleteLearningKit(dayPlan, examBoard, grade) {
         difficulty: 'medium',
         count: 5
       }, {
-        timeout: 120000
+        timeout: 3000000
       });
       
       const [scenarioResponse, questionsResponse] = await Promise.all([scenarioPromise, questionsPromise]);
