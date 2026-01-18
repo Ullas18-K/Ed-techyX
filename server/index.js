@@ -27,6 +27,7 @@ const allowedOrigins = [
   'http://127.0.0.1:8081', // Add frontend port
   'http://127.0.0.1:3000',
   'http://localhost:8001',
+  'http://localhost:4173',
   ...(process.env.CLIENT_URLS || process.env.CLIENT_URL || '').split(',').map((origin) => origin.trim()).filter(Boolean)
 ];
 
