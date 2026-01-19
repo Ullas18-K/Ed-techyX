@@ -1,7 +1,8 @@
 import { create } from 'zustand';
 import axios from 'axios';
+import API_CONFIG from '@/config/api';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:9000';
+const API_URL = API_CONFIG.BACKEND_BASE_URL;
 
 interface Subject {
   name: string;

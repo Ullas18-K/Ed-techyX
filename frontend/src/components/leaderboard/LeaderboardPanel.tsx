@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Trophy, Award, Crown, Flame } from 'lucide-react';
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:9000/api';
 import { useAuthStore } from '@/lib/authStore';
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
+import API_CONFIG from '@/config/api';
+
+const API_URL = API_CONFIG.BACKEND_API_URL;
 
 interface LeaderboardEntry {
   rank: number;

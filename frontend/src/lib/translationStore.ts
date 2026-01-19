@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { useAuthStore } from './authStore';
+import API_CONFIG from '@/config/api';
 
 interface TranslationState {
     currentLanguage: string;
@@ -9,7 +10,7 @@ interface TranslationState {
     translate: (text: string | string[]) => Promise<string | string[]>;
 }
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:9000/api';
+const API_URL = API_CONFIG.BACKEND_API_URL;
 
 // Translation Queue for Batching
 let pendingTranslations: Map<string, { resolve: (val: string) => void, reject: (err: any) => void }> = new Map();

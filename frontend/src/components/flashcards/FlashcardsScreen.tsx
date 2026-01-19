@@ -7,6 +7,7 @@ import { useAuthStore } from '@/lib/authStore';
 import { toast } from 'sonner';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
+import API_CONFIG from '@/config/api';
 
 interface Flashcard {
   name: string;
@@ -68,7 +69,7 @@ export function FlashcardsScreen({ onComplete }: FlashcardsScreenProps) {
         console.log(`📡 [Attempt ${attempts + 1}/${maxAttempts}] Fetching flashcards for session: ${sid}`);
         
         const response = await fetch(
-          `${import.meta.env.VITE_API_URL || 'http://localhost:9000/api'}/visual-flashcards/${sid}`,
+          `${API_CONFIG.BACKEND_API_URL}/visual-flashcards/${sid}`,
           {
             headers: {
               'Authorization': `Bearer ${token}`,

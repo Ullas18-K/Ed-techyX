@@ -5,8 +5,9 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useTranslationStore } from '@/lib/translationStore';
 import { Translate } from '@/components/Translate';
+import API_CONFIG from '@/config/api';
 
-const TTS_URL = 'http://localhost:8001/api/tts/synthesize';
+const TTS_URL = `${API_CONFIG.AI_SERVICE_API_URL}/tts/synthesize`;
 
 export const HomePenman = () => {
     const [isVisible, setIsVisible] = useState(false);

@@ -1,7 +1,8 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import API_CONFIG from '@/config/api';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:9000/api';
+const API_URL = API_CONFIG.BACKEND_API_URL;
 
 export interface User {
   id: string;

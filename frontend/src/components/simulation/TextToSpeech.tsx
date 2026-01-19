@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useTranslationStore } from '@/lib/translationStore';
+import API_CONFIG from '@/config/api';
 
 interface TextToSpeechProps {
   text: string;
@@ -98,7 +99,7 @@ export function TextToSpeech({
       console.log(`🗣️ Using voice for language: ${languageCode}`);
 
       // Call TTS API
-      const response = await fetch('http://localhost:8001/api/tts/synthesize', {
+      const response = await fetch(`${API_CONFIG.AI_SERVICE_API_URL}/tts/synthesize`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

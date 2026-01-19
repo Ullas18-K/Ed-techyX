@@ -13,8 +13,9 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { Translate } from '@/components/Translate';
 import { useTranslationStore } from '@/lib/translationStore';
+import API_CONFIG from '@/config/api';
 
-const TTS_URL = 'http://localhost:8001/api/tts/synthesize';
+const TTS_URL = `${API_CONFIG.AI_SERVICE_API_URL}/tts/synthesize`;
 
 export interface PenmanMessage {
   instruction: string;

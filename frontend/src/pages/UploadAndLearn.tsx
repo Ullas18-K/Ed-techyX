@@ -12,6 +12,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
+import API_CONFIG from '@/config/api';
 
 interface AnalysisResult {
     is_ncert: boolean;
@@ -137,7 +138,7 @@ const UploadAndLearn: React.FC = () => {
         formData.append('image', selectedImage);
 
         try {
-            const response = await fetch('http://localhost:8001/api/upload-and-learn', {
+            const response = await fetch(`${API_CONFIG.AI_SERVICE_API_URL}/upload-and-learn`, {
                 method: 'POST',
                 body: formData,
             });

@@ -1,8 +1,9 @@
 // AI Service API integration
 import { toast } from 'sonner';
 import { useTranslationStore } from './translationStore';
+import API_CONFIG from '@/config/api';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:9000/api';
+const API_URL = API_CONFIG.BACKEND_API_URL;
 
 // Types for AI responses (matching actual API format)
 export interface AIScenarioResponse {

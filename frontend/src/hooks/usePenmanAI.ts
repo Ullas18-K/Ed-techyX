@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
+import API_CONFIG from '@/config/api';
 
 interface AIResponse {
     response: string;
@@ -29,7 +30,7 @@ export const usePenmanAI = ({ subject, topic, generateSignature }: UsePenmanAIPr
         // 2. API Call
         setIsThinking(true);
         try {
-            const response = await fetch('http://localhost:8001/api/conversation/guide', {
+            const response = await fetch(`${API_CONFIG.AI_SERVICE_API_URL}/conversation/guide`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
