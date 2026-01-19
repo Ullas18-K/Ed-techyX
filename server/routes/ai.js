@@ -8,7 +8,7 @@ const router = express.Router();
 
 // AI Service base URL from environment or default
 const AI_SERVICE_BASE_URL = process.env.AI_SERVICE_BASE_URL || 'http://localhost:8001';
-const AI_SERVICE_URL = `${AI_SERVICE_BASE_URL}/api`;
+const AI_SERVICE_URL = AI_SERVICE_BASE_URL;
 
 // Validation middleware
 const scenarioValidation = [
