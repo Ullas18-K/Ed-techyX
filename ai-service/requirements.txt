@@ -27,6 +27,7 @@ pillow
 python-multipart
 aiofiles
 requests
+diskcache
 
 # Production server
 gunicorn
