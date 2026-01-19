@@ -24,7 +24,7 @@ export const API_CONFIG = {
   BACKEND_BASE_URL: getBackendBaseUrl(),
   BACKEND_API_URL: `${getBackendBaseUrl()}/api`,
   AI_SERVICE_BASE_URL: getAIServiceBaseUrl(),
-  AI_SERVICE_API_URL: `${getAIServiceBaseUrl()}/api`,
+  AI_SERVICE_API_URL: `${getAIServiceBaseUrl()}`,
 } as const;
 
 export default API_CONFIG;
