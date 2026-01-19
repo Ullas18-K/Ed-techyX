@@ -34,7 +34,7 @@ class Settings(BaseSettings):
     
     # CORS
     BACKEND_BASE_URL: str = "https://ed-techyx.onrender.com"
-    FRONTEND_BASE_URL: str = "https://ed-techy-x.vercel.app/"
+    FRONTEND_BASE_URL: str = "https://ed-techy-x.vercel.app"
     CORS_ORIGINS: str = ""  # Comma-separated list of additional origins
     
     class Config:

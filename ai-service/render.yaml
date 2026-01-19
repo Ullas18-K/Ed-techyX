@@ -1,0 +1,36 @@
+services:
+  - type: web
+    name: edtech-ai-service
+    runtime: docker
+    region: oregon
+    plan: standard
+    numInstances: 1
+    
+    # Health check
+    healthCheckPath: /health
+    
+    # Environment variables
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: GCP_PROJECT_ID
+        scope: runtime
+        fromDatabase: false
+      - key: BACKEND_BASE_URL
+        value: https://ed-techyx.onrender.com
+      - key: FRONTEND_BASE_URL
+        value: https://ed-techy-x.vercel.app
+      - key: GEMINI_API_KEY
+        scope: runtime
+        fromDatabase: false
+      - key: CHROMA_PERSIST_DIR
+        value: /app/chroma_db
+      - key: EMBEDDING_MODEL
+        value: textembedding-gecko@003
+      - key: GENERATION_MODEL
+        value: gemini-1.5-flash
+      - key: PORT
+        value: "8080"
+
+    # Auto-deploy on git push
+    autoDeploy: true
