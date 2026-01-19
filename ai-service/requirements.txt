@@ -8,12 +8,19 @@ pydantic-settings==2.0.3
 # Google Cloud & Vertex AI
 google-cloud-aiplatform==1.38.1
 google-auth==2.25.2
+google-cloud-texttospeech==2.14.3
+google-cloud-vision==3.4.4
+vertexai==0.33.0
 
 # RAG & Document Processing
 langchain==0.0.335
 langchain-community==0.0.1
 chromadb==0.4.18
 pypdf2==3.0.1
+pypdf==4.0.1
+
+# Image Processing & Document Handling
+pillow==10.1.0
 
 # Utilities
 python-multipart==0.0.6
