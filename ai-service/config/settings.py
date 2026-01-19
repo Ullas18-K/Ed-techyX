@@ -33,8 +33,9 @@ class Settings(BaseSettings):
     TOP_K_RESULTS: int = 5
     
     # CORS
-    BACKEND_URL: str = "http://localhost:4000"
-    FRONTEND_URL: str = "http://localhost:5173"
+    BACKEND_URL: str = "http://localhost:9000"
+    FRONTEND_URL: str = "http://localhost:8080"
+    CORS_ORIGINS: str = ""  # Comma-separated list of additional origins
     
     class Config:
         env_file = ".env"

@@ -50,17 +50,22 @@ app = FastAPI(
 )
 
 # CORS middleware
+allowed_origins = [
+    settings.BACKEND_URL,
+    settings.FRONTEND_URL,
+    "http://localhost:5173",
+    "http://localhost:8080",
+    "http://localhost:8081",
+    "http://localhost:9000",
+]
+
+# Add additional origins from environment variable
+if settings.CORS_ORIGINS:
+    allowed_origins.extend([origin.strip() for origin in settings.CORS_ORIGINS.split(',')])
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        settings.BACKEND_URL,
-        settings.FRONTEND_URL,
-        "http://localhost:5173",
-        "http://localhost:8081",
-        "http://localhost:4000",
-        "http://localhost:8080",
-        "http://localhost:9000",
-    ],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
