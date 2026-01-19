@@ -2,7 +2,8 @@ import express from 'express';
 import axios from 'axios';
 
 const router = express.Router();
-const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8000';
+const AI_SERVICE_BASE_URL = process.env.AI_SERVICE_BASE_URL || 'http://localhost:8001';
+const AI_SERVICE_URL = `${AI_SERVICE_BASE_URL}/api`;
 
 // In-memory storage for flashcard sessions
 // In production, use Redis or similar

@@ -28,7 +28,7 @@ const allowedOrigins = [
   'http://127.0.0.1:3000',
   'http://localhost:8001',
   'http://localhost:4173',
-  ...(process.env.CORS_ORIGINS || process.env.CLIENT_URLS || process.env.CLIENT_URL || '').split(',').map((origin) => origin.trim()).filter(Boolean)
+  ...(process.env.CORS_ORIGINS || '').split(',').map((origin) => origin.trim()).filter(Boolean)
 ];
 
 app.use(cors({

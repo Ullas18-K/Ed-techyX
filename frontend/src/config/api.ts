@@ -3,11 +3,21 @@
  */
 
 const getBackendBaseUrl = (): string => {
-  return import.meta.env.VITE_BACKEND_BASE_URL || 'http://localhost:9000';
+try {
+    const url = import.meta.env.VITE_BACKEND_BASE_URL;
+    if (!url) {
+        console.warn('VITE_BACKEND_BASE_URL is not defined in environment variables');
+        return 'http://localhost:9000';
+    }
+    return url;
+} catch (error) {
+    console.error('Error loading backend URL:', error);
+    return 'http://localhost:9000';
+}
 };
 
 const getAIServiceBaseUrl = (): string => {
-  return import.meta.env.VITE_AI_SERVICE_BASE_URL || 'http://localhost:8001';
+  return import.meta.env.VITE_AI_SERVICE_BASE_URL;
 };
 
 export const API_CONFIG = {

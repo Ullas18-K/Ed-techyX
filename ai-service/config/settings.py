@@ -33,8 +33,8 @@ class Settings(BaseSettings):
     TOP_K_RESULTS: int = 5
     
     # CORS
-    BACKEND_URL: str = "http://localhost:9000"
-    FRONTEND_URL: str = "http://localhost:8080"
+    BACKEND_BASE_URL: str = "https://ed-techyx.onrender.com"
+    FRONTEND_BASE_URL: str = "https://ed-techy-x.vercel.app/"
     CORS_ORIGINS: str = ""  # Comma-separated list of additional origins
     
     class Config:
