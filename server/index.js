@@ -28,7 +28,7 @@ const allowedOrigins = [
   'http://127.0.0.1:3000',
   'http://localhost:8001',
   'http://localhost:4173',
-  'https://ed-techy-x.vercel.app/',
+  'https://ed-techy-x.vercel.app',
   ...(process.env.CORS_ORIGINS || '').split(',').map((origin) => origin.trim()).filter(Boolean)
 ];
 
