@@ -10,6 +10,7 @@ google-cloud-aiplatform
 google-auth
 google-cloud-texttospeech
 google-cloud-vision
+google-generativeai
 vertexai
 
 # RAG & Document Processing
