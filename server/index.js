@@ -33,15 +33,19 @@ const allowedOrigins = [
   ...(process.env.CORS_ORIGINS || '').split(',').map((origin) => origin.trim()).filter(Boolean)
 ];
 
+console.log('CORS allowed origins:', allowedOrigins);
+
 app.use(cors({
   origin: (origin, callback) => {
     // Allow non-browser requests (e.g., curl, Postman) where origin is undefined
     if (!origin) return callback(null, true);
 
     if (allowedOrigins.includes(origin)) {
+      console.log(`✓ CORS allowed for origin: ${origin}`);
       return callback(null, true);
     }
 
+    console.error(`✗ CORS blocked for origin: ${origin}`);
     return callback(new Error(`Not allowed by CORS: ${origin}`));
   },
   credentials: true
