@@ -99,7 +99,7 @@ export function TextToSpeech({
       console.log(`🗣️ Using voice for language: ${languageCode}`);
 
       // Call TTS API
-      const response = await fetch(`${API_CONFIG.AI_SERVICE_API_URL}/tts/synthesize`, {
+      const response = await fetch(`${API_CONFIG.AI_SERVICE_API_URL}/api/tts/synthesize`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
