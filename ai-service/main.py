@@ -111,14 +111,14 @@ async def startup_event():
         rag_retriever = RAGRetriever()
         logger.info("RAG retriever initialized")
         
-        # Auto-process PDFs if they exist and vector store is empty
+        # Check vector store status (but don't auto-process to save memory)
         stats = rag_retriever.get_stats()
         if stats["total_documents"] == 0:
             ncert_dir = Path("./ncert_pdfs")
             if ncert_dir.exists() and list(ncert_dir.rglob("*.pdf")):
-                logger.info("📚 Found NCERT PDFs, processing automatically...")
-                process_ncert_directory(str(ncert_dir))
-                logger.info("✅ PDFs processed and indexed")
+                logger.info("📚 Found NCERT PDFs locally")
+                logger.info("⚠️ Skipping auto-processing to save memory on startup")
+                logger.info("💡 PDFs will be processed on first use OR manually via POST /admin/process-pdfs")
             else:
                 logger.warning("Vector store is empty! No NCERT PDFs found.")
                 logger.info("To add PDFs: 1) Upload to GCS bucket, or 2) Use POST /admin/process-pdfs")
@@ -144,6 +144,29 @@ async def startup_event():
             raise
         else:
             logger.warning("Continuing with mock mode (GCP not configured)")
+
+# Helper function for lazy PDF processing
+def ensure_pdfs_processed():
+    """Process PDFs if they exist but haven't been processed yet (lazy loading)"""
+    if not rag_retriever:
+        return False
+    
+    stats = rag_retriever.get_stats()
+    if stats["total_documents"] > 0:
+        return True  # Already processed
+    
+    ncert_dir = Path("./ncert_pdfs")
+    if ncert_dir.exists() and list(ncert_dir.rglob("*.pdf")):
+        logger.info("🔄 Lazy-loading PDFs on first request...")
+        try:
+            process_ncert_directory(str(ncert_dir))
+            logger.info("✅ PDFs processed successfully")
+            return True
+        except Exception as e:
+            logger.error(f"❌ Failed to process PDFs: {e}")
+            return False
+    
+    return False
 
 @app.get("/")
 async def root():
