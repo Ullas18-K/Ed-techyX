@@ -1,8 +1,9 @@
-const express = require('express');
+import express from 'express';
+import axios from 'axios';
+import multer from 'multer';
+import FormData from 'form-data';
+
 const router = express.Router();
-const axios = require('axios');
-const multer = require('multer');
-const FormData = require('form-data');
 
 const AI_SERVICE_BASE_URL = process.env.AI_SERVICE_BASE_URL;
 
@@ -82,4 +83,4 @@ router.post('/analyze', upload.single('image'), async (req, res) => {
     }
 });
 
-module.exports = router;
+export default router;
