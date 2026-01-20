@@ -4,6 +4,8 @@ import crypto from 'crypto';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import fs from 'fs';
+import os from 'os';
 
 dotenv.config();
 
@@ -16,15 +18,46 @@ const cache = new NodeCache({ stdTTL: 86400, checkperiod: 3600 });
 // Lazy initialized client
 let translationClient = null;
 
+// Helper to handle JSON credentials
+const setupCredentials = () => {
+    const credsEnv = process.env.GOOGLE_APPLICATION_CREDENTIALS;
+    
+    if (!credsEnv) return null;
+    
+    // Check if it's JSON content (starts with {)
+    if (credsEnv.trim().startsWith('{')) {
+        try {
+            // Parse JSON to validate
+            const credsObj = JSON.parse(credsEnv);
+            
+            // Write to temp file
+            const tempFile = path.join(os.tmpdir(), `gcp-creds-${Date.now()}.json`);
+            fs.writeFileSync(tempFile, JSON.stringify(credsObj));
+            
+            // Set environment variable for Google SDK
+            process.env.GOOGLE_APPLICATION_CREDENTIALS = tempFile;
+            
+            console.log('✅ Created temporary credentials file from JSON');
+            return tempFile;
+        } catch (e) {
+            console.error('❌ Invalid JSON in GOOGLE_APPLICATION_CREDENTIALS:', e.message);
+            return null;
+        }
+    }
+    
+    // It's already a file path
+    return credsEnv;
+};
+
 const getTranslationClient = () => {
     if (translationClient) return translationClient;
 
-    const credentialsPath = process.env.GOOGLE_APPLICATION_CREDENTIALS;
+    const credentialsPath = setupCredentials();
     const projectId = process.env.GCP_PROJECT_ID;
 
     console.log('🌐 Initializing Translation Service...');
     console.log(`📍 Project ID: ${projectId || 'MISSING'}`);
-    console.log(`🔑 Credentials Path: ${credentialsPath || 'MISSING'}`);
+    console.log(`🔑 Credentials: ${credentialsPath ? 'Configured' : 'MISSING'}`);
 
     try {
         translationClient = new TranslationServiceClient();

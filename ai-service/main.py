@@ -32,6 +32,7 @@ from agents.exam_planner import ExamPlannerAgent
 from utils.pyq_ingestion import ingest_all_pyqs
 from utils.tts_service import tts_service
 from utils.ai_response_cache import build_cache_key, get_from_cache, set_cache
+from utils.gcs_pdf_manager import download_pdfs_from_gcs
 from fastapi.responses import FileResponse, Response
 import os
 
@@ -88,9 +89,33 @@ async def startup_event():
     logger.info(f"GCP Project: {settings.GCP_PROJECT_ID or 'Not configured'}")
     
     try:
+        # Download PDFs from GCS if configured
+        gcs_bucket = os.getenv("GCS_BUCKET_NAME")
+        if gcs_bucket:
+            logger.info(f"📦 GCS Bucket configured: {gcs_bucket}")
+            pdf_success = download_pdfs_from_gcs(gcs_bucket)
+            if pdf_success:
+                logger.info("✅ PDFs ready for processing")
+            else:
+                logger.warning("⚠️ Failed to download PDFs from GCS, will continue without RAG data")
+        else:
+            logger.info("💡 GCS_BUCKET_NAME not set, skipping PDF download")
+        
         # Initialize RAG retriever
         rag_retriever = RAGRetriever()
         logger.info("RAG retriever initialized")
+        
+        # Auto-process PDFs if they exist and vector store is empty
+        stats = rag_retriever.get_stats()
+        if stats["total_documents"] == 0:
+            ncert_dir = Path("./ncert_pdfs")
+            if ncert_dir.exists() and list(ncert_dir.rglob("*.pdf")):
+                logger.info("📚 Found NCERT PDFs, processing automatically...")
+                process_ncert_directory(str(ncert_dir))
+                logger.info("✅ PDFs processed and indexed")
+            else:
+                logger.warning("Vector store is empty! No NCERT PDFs found.")
+                logger.info("To add PDFs: 1) Upload to GCS bucket, or 2) Use POST /admin/process-pdfs")
         
         # Initialize agents
         scenario_generator = ScenarioGenerator(rag_retriever)
@@ -103,13 +128,9 @@ async def startup_event():
         
         logger.info("All agents initialized successfully")
         
-        # Check vector store status
+        # Check final vector store status
         stats = rag_retriever.get_stats()
         logger.info(f"Vector store stats: {stats}")
-        
-        if stats["total_documents"] == 0:
-            logger.warning("Vector store is empty! No NCERT PDFs processed yet.")
-            logger.info("To process PDFs, use: POST /admin/process-pdfs")
         
     except Exception as e:
         logger.error(f"Error during startup: {e}")
