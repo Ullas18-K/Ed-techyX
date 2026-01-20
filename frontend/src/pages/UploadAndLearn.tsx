@@ -138,7 +138,7 @@ const UploadAndLearn: React.FC = () => {
         formData.append('image', selectedImage);
 
         try {
-            const response = await fetch(`${API_CONFIG.AI_SERVICE_API_URL}/upload-and-learn`, {
+            const response = await fetch(`${API_CONFIG.BACKEND_API_URL}/upload-learn/analyze`, {
                 method: 'POST',
                 body: formData,
             });
