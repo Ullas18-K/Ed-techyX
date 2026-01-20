@@ -7,6 +7,7 @@ import aiRoutes from './routes/ai.js';
 import translationRoutes from './routes/translation.js';
 import examPlanningRoutes from './routes/examPlanning.js';
 import ttsRoutes from './routes/tts.js';
+import uploadLearnRoutes from './routes/uploadLearn.js';
 
 // Load environment variables
 dotenv.config();
@@ -65,6 +66,7 @@ app.use('/api/ai', aiRoutes);
 app.use('/api/translate', translationRoutes);
 app.use('/api/exam-planning', examPlanningRoutes);
 app.use('/api/tts', ttsRoutes);
+app.use('/api/upload-learn', uploadLearnRoutes);
 
 // Health check route
 app.get('/api/health', (req, res) => {
