@@ -53,6 +53,7 @@ app = FastAPI(
 allowed_origins = [
     settings.BACKEND_BASE_URL,
     settings.FRONTEND_BASE_URL,
+    "https://ed-techy-x.vercel.app",
     "http://localhost:5173",
     "http://localhost:8080",
     "http://localhost:8081",
@@ -62,6 +63,11 @@ allowed_origins = [
 # Add additional origins from environment variable
 if settings.CORS_ORIGINS:
     allowed_origins.extend([origin.strip() for origin in settings.CORS_ORIGINS.split(',')])
+
+# Remove duplicates and empty strings
+allowed_origins = list(set(filter(None, allowed_origins)))
+
+logger.info(f"CORS allowed origins: {allowed_origins}")
 
 app.add_middleware(
     CORSMiddleware,
