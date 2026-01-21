@@ -43,7 +43,7 @@ router.post('/scenario/generate', authenticateToken, scenarioValidation, async (
     console.log(`⏳ AI Service: This may take 30-60 seconds...`);
 
     // Call AI service with extended timeout (scenario generation takes ~35 seconds)
-    const response = await axios.post(`${AI_SERVICE_URL}/api/scenario/generate`, {
+    const response = await axios.post(`${AI_SERVICE_URL}/scenario/generate`, {
       grade,
       subject,
       topic,
@@ -112,7 +112,7 @@ router.post('/conversation/guide', authenticateToken, conversationValidation, as
     console.log(`🤖 AI Service: Getting guidance for task ${current_task_id}`);
 
     // Call AI service with reasonable timeout for conversation
-    const response = await axios.post(`${AI_SERVICE_URL}/api/conversation/guide`, {
+    const response = await axios.post(`${AI_SERVICE_URL}/conversation/guide`, {
       scenario_id,
       current_task_id,
       student_input,
@@ -185,7 +185,7 @@ router.post('/rag/search', authenticateToken, async (req, res) => {
     if (top_k) params.append('top_k', top_k);
 
     // Call AI service
-    const response = await axios.post(`${AI_SERVICE_URL}/api/rag/search?${params.toString()}`, {}, {
+    const response = await axios.post(`${AI_SERVICE_URL}/rag/search?${params.toString()}`, {}, {
       timeout: 10000
     });
 
@@ -223,7 +223,7 @@ router.post('/questions/practice', authenticateToken, async (req, res) => {
 
     console.log(`📚 Fetching practice questions for: ${topic}`);
 
-    const response = await axios.post(`${AI_SERVICE_URL}/api/questions/practice`, {
+    const response = await axios.post(`${AI_SERVICE_URL}/questions/practice`, {
       topic,
       grade,
       subject,
@@ -263,7 +263,7 @@ router.get('/stats', authenticateToken, async (req, res) => {
     // Call both health and RAG stats endpoints
     const [healthResponse, ragStatsResponse] = await Promise.all([
       axios.get(`${AI_SERVICE_URL}/health`).catch(err => null),
-      axios.get(`${AI_SERVICE_URL}/api/rag/stats`).catch(err => null)
+      axios.get(`${AI_SERVICE_URL}/rag/stats`).catch(err => null)
     ]);
 
     const stats = {

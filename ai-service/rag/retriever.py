@@ -217,7 +217,7 @@ class RAGRetriever:
             if subject is not None:
                 filters["subject"] = subject.lower()
             if doc_type is not None:
-                filters["type"] = doc_type
+                filters["doc_type"] = doc_type  # Changed from "type" to "doc_type"
             
             logger.info(f"🔎 RAG Retriever - Query: '{query[:50]}', Filters: {filters}, Top K: {top_k or 5}")
             

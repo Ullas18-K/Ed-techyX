@@ -123,8 +123,8 @@ class PYQGenerator:
             metadatas = results.get('metadatas', [])
             
             for idx, (content, metadata) in enumerate(zip(documents, metadatas)):
-                # Metadata should already have type='pyq' from filter, but double check
-                if metadata.get('type') != 'pyq':
+                # Metadata should already have doc_type='pyq' from filter, but double check
+                if metadata.get('doc_type') != 'pyq':  # Changed from 'type' to 'doc_type'
                     logger.warning(f"⚠️ Skipping non-PYQ document at index {idx}")
                     continue
                 
@@ -263,8 +263,32 @@ Generate ONLY the JSON array, no extra text."""
                 response_text = response_text[:-3]
             response_text = response_text.strip()
             
+            # Remove any text before first [ or {
+            start_idx = min(
+                response_text.find('[') if '[' in response_text else len(response_text),
+                response_text.find('{') if '{' in response_text else len(response_text)
+            )
+            if start_idx > 0:
+                response_text = response_text[start_idx:]
+            
+            # Find the last ] or }
+            end_idx = max(
+                response_text.rfind(']') if ']' in response_text else -1,
+                response_text.rfind('}') if '}' in response_text else -1
+            )
+            if end_idx > 0:
+                response_text = response_text[:end_idx + 1]
+            
+            # Log cleaned JSON for debugging
+            logger.debug(f"Cleaned JSON (first 500 chars): {response_text[:500]}")
+            
             # Parse JSON
-            questions_data = json.loads(response_text)
+            try:
+                questions_data = json.loads(response_text)
+            except json.JSONDecodeError as parse_error:
+                logger.error(f"JSON Parse Error: {parse_error}")
+                logger.error(f"Failed JSON (first 1000 chars): {response_text[:1000]}")
+                return []
             
             # Convert to PYQQuestion objects
             questions = []
