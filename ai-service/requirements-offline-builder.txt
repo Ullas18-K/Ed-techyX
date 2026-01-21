@@ -1,0 +1,22 @@
+# Minimal requirements for offline ChromaDB builder
+# Use this if full requirements.txt installation fails
+
+# Core dependencies
+python-dotenv==1.2.1
+pydantic==2.12.5
+pydantic-settings==2.12.0
+
+# Google Cloud Platform
+google-cloud-aiplatform==1.60.0
+google-cloud-storage==2.18.0
+google-auth==2.35.0
+vertexai==1.60.0
+
+# Vector Database
+chromadb==0.5.15
+
+# PDF Processing
+pypdf2==3.0.1
+
+# Progress bar
+tqdm==4.67.1

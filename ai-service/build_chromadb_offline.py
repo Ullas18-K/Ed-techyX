@@ -37,12 +37,17 @@ sys.path.insert(0, str(Path(__file__).parent))
 from rag.retriever import RAGRetriever
 from rag.pdf_processor import PDFProcessor
 
-def build_vector_database_offline(pdf_directory: str = "./ncert_pdfs", output_dir: str = "./chroma_db"):
+def build_vector_database_offline(
+    ncert_pdf_directory: str = "./ncert_pdfs", 
+    pyq_pdf_directory: str = "./data/pyqs/pdfs",
+    output_dir: str = "./chroma_db"
+):
     """
-    Build ChromaDB offline by processing all PDFs.
+    Build ChromaDB offline by processing all PDFs (NCERT + PYQs).
     
     Args:
-        pdf_directory: Directory containing NCERT PDFs
+        ncert_pdf_directory: Directory containing NCERT PDFs
+        pyq_pdf_directory: Directory containing PYQ PDFs
         output_dir: Where to save the ChromaDB (will be uploaded to GCS)
     """
     try:
@@ -58,7 +63,8 @@ def build_vector_database_offline(pdf_directory: str = "./ncert_pdfs", output_di
             logger.error("Please set them in .env file or environment")
             return False
         
-        logger.info(f"📁 PDF Directory: {pdf_directory}")
+        logger.info(f"📁 NCERT PDF Directory: {ncert_pdf_directory}")
+        logger.info(f"📁 PYQ PDF Directory: {pyq_pdf_directory}")
         logger.info(f"💾 Output Directory: {output_dir}")
         logger.info("")
         
@@ -68,18 +74,32 @@ def build_vector_database_offline(pdf_directory: str = "./ncert_pdfs", output_di
         logger.info("✅ RAG Retriever initialized")
         logger.info("")
         
-        # Find all PDFs
-        pdf_dir = Path(pdf_directory)
-        if not pdf_dir.exists():
-            logger.error(f"❌ Directory not found: {pdf_directory}")
-            return False
+        # Collect all PDFs from both directories
+        all_pdf_files = []
         
-        pdf_files = list(pdf_dir.rglob("*.pdf"))
-        logger.info(f"📚 Found {len(pdf_files)} PDF files")
+        # Find NCERT PDFs
+        ncert_dir = Path(ncert_pdf_directory)
+        if ncert_dir.exists():
+            ncert_files = list(ncert_dir.rglob("*.pdf"))
+            logger.info(f"📚 Found {len(ncert_files)} NCERT PDF files")
+            all_pdf_files.extend([("ncert", f) for f in ncert_files])
+        else:
+            logger.warning(f"⚠️  NCERT directory not found: {ncert_pdf_directory}")
+        
+        # Find PYQ PDFs
+        pyq_dir = Path(pyq_pdf_directory)
+        if pyq_dir.exists():
+            pyq_files = list(pyq_dir.rglob("*.pdf"))
+            logger.info(f"📝 Found {len(pyq_files)} PYQ PDF files")
+            all_pdf_files.extend([("pyq", f) for f in pyq_files])
+        else:
+            logger.warning(f"⚠️  PYQ directory not found: {pyq_pdf_directory}")
+        
+        logger.info(f"📊 Total PDFs to process: {len(all_pdf_files)}")
         logger.info("")
         
-        if not pdf_files:
-            logger.error("❌ No PDF files found")
+        if not all_pdf_files:
+            logger.error("❌ No PDF files found in any directory")
             return False
         
         # Initialize processor
@@ -89,25 +109,35 @@ def build_vector_database_offline(pdf_directory: str = "./ncert_pdfs", output_di
         successful_pdfs = 0
         
         # Process each PDF individually
-        for idx, pdf_path in enumerate(pdf_files, 1):
+        for idx, (pdf_type, pdf_path) in enumerate(all_pdf_files, 1):
             try:
-                logger.info(f"📖 [{idx}/{len(pdf_files)}] Processing: {pdf_path.name}")
+                pdf_type_emoji = "📖" if pdf_type == "ncert" else "📝"
+                logger.info(f"{pdf_type_emoji} [{idx}/{len(all_pdf_files)}] Processing {pdf_type.upper()}: {pdf_path.name}")
                 
                 # Extract metadata from path
                 parts = pdf_path.parts
                 grade = None
                 subject = pdf_path.stem.lower()
                 
-                for part in parts:
-                    if "class" in part.lower():
-                        try:
-                            grade = int(part.lower().replace("class_", "").replace("class", ""))
-                        except:
-                            pass
+                # For NCERT PDFs, try to extract grade from directory
+                if pdf_type == "ncert":
+                    for part in parts:
+                        if "class" in part.lower():
+                            try:
+                                grade = int(part.lower().replace("class_", "").replace("class", ""))
+                            except:
+                                pass
+                    
+                    if grade is None:
+                        logger.warning(f"   ⚠️  Could not determine grade, skipping")
+                        continue
                 
-                if grade is None:
-                    logger.warning(f"   ⚠️ Could not determine grade, skipping")
-                    continue
+                # For PYQ PDFs, use default grade 10 and mark as pyq type
+                else:  # pdf_type == "pyq"
+                    grade = 10  # Default grade for PYQs
+                    # Extract subject from filename (e.g., pyq_lifeprocesses.pdf -> lifeprocesses)
+                    if pdf_path.stem.startswith("pyq_"):
+                        subject = pdf_path.stem.replace("pyq_", "")
                 
                 # Process PDF
                 chunks = processor.process_pdf(
@@ -118,8 +148,12 @@ def build_vector_database_offline(pdf_directory: str = "./ncert_pdfs", output_di
                 )
                 
                 if not chunks:
-                    logger.warning(f"   ⚠️ No chunks extracted")
+                    logger.warning(f"   ⚠️  No chunks extracted")
                     continue
+                
+                # Add document type metadata to each chunk
+                for chunk in chunks:
+                    chunk["metadata"]["doc_type"] = pdf_type  # "ncert" or "pyq"
                 
                 logger.info(f"   📦 Extracted {len(chunks)} chunks")
                 
@@ -144,7 +178,7 @@ def build_vector_database_offline(pdf_directory: str = "./ncert_pdfs", output_di
         logger.info("=" * 80)
         logger.info("📊 PROCESSING COMPLETE")
         logger.info("=" * 80)
-        logger.info(f"✅ Successful PDFs: {successful_pdfs}/{len(pdf_files)}")
+        logger.info(f"✅ Successful PDFs: {successful_pdfs}/{len(all_pdf_files)}")
         logger.info(f"📦 Total chunks: {total_chunks}")
         
         # Get vector store stats
@@ -186,11 +220,16 @@ def build_vector_database_offline(pdf_directory: str = "./ncert_pdfs", output_di
 if __name__ == "__main__":
     import argparse
     
-    parser = argparse.ArgumentParser(description="Build ChromaDB offline for EdTech RAG")
+    parser = argparse.ArgumentParser(description="Build ChromaDB offline for EdTech RAG (NCERT + PYQs)")
     parser.add_argument(
-        "--pdf-dir",
+        "--ncert-dir",
         default="./ncert_pdfs",
         help="Directory containing NCERT PDFs (default: ./ncert_pdfs)"
+    )
+    parser.add_argument(
+        "--pyq-dir",
+        default="./data/pyqs/pdfs",
+        help="Directory containing PYQ PDFs (default: ./data/pyqs/pdfs)"
     )
     parser.add_argument(
         "--output-dir",
@@ -200,7 +239,7 @@ if __name__ == "__main__":
     
     args = parser.parse_args()
     
-    success = build_vector_database_offline(args.pdf_dir, args.output_dir)
+    success = build_vector_database_offline(args.ncert_dir, args.pyq_dir, args.output_dir)
     
     if success:
         logger.info("🎉 SUCCESS!")
