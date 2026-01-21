@@ -389,26 +389,89 @@ async def process_pdfs(background_tasks: BackgroundTasks, directory: str = "ncer
         raise HTTPException(status_code=500, detail=str(e))
 
 async def process_pdfs_background(directory: str):
-    """Background task to process PDFs."""
+    """Background task to process PDFs one at a time to manage memory."""
+    import gc  # Import garbage collector
+    
     try:
-        logger.info(f"Starting PDF processing from {directory}")
+        logger.info(f"📚 Starting PDF processing from {directory}")
         
-        # Process all PDFs in directory
-        chunks = process_ncert_directory(directory)
+        from pathlib import Path
+        pdf_dir = Path(directory)
         
-        if not chunks:
-            logger.warning(f"No chunks extracted from {directory}")
+        if not pdf_dir.exists():
+            logger.error(f"❌ Directory {directory} does not exist")
             return
         
-        # Add to vector store
-        logger.info(f"Adding {len(chunks)} chunks to vector store...")
-        if rag_retriever:
-            rag_retriever.add_documents(chunks)
+        # Find all PDF files
+        pdf_files = list(pdf_dir.rglob("*.pdf"))
+        logger.info(f"📄 Found {len(pdf_files)} PDF files")
         
-        logger.info(f"Successfully processed {len(chunks)} chunks")
+        if not pdf_files:
+            logger.warning("⚠️ No PDF files found")
+            return
+        
+        total_chunks_added = 0
+        
+        # Process each PDF individually
+        for idx, pdf_path in enumerate(pdf_files, 1):
+            try:
+                logger.info(f"📖 Processing PDF {idx}/{len(pdf_files)}: {pdf_path.name}")
+                
+                # Extract grade from path
+                parts = pdf_path.parts
+                grade = None
+                subject = pdf_path.stem.lower()
+                
+                for part in parts:
+                    if "class" in part.lower():
+                        try:
+                            grade = int(part.lower().replace("class_", "").replace("class", ""))
+                        except:
+                            pass
+                
+                if grade is None:
+                    logger.warning(f"⚠️ Could not determine grade for {pdf_path}, skipping")
+                    continue
+                
+                # Process this single PDF
+                from rag.pdf_processor import PDFProcessor
+                processor = PDFProcessor()
+                
+                chunks = processor.process_pdf(
+                    str(pdf_path),
+                    grade=grade,
+                    subject=subject,
+                    chapter=pdf_path.stem
+                )
+                
+                if not chunks:
+                    logger.warning(f"⚠️ No chunks extracted from {pdf_path.name}")
+                    continue
+                
+                logger.info(f"📦 {pdf_path.name}: {len(chunks)} chunks extracted")
+                
+                # Add to vector store immediately (in batches internally)
+                if rag_retriever:
+                    rag_retriever.add_documents(chunks)
+                    total_chunks_added += len(chunks)
+                    logger.info(f"✅ {pdf_path.name}: Added to vector store (Total: {total_chunks_added} chunks)")
+                
+                # Force garbage collection after each PDF
+                gc.collect()
+                
+            except Exception as e:
+                logger.error(f"❌ Error processing {pdf_path.name}: {e}")
+                continue
+        
+        logger.info(f"🎉 PDF processing complete: {total_chunks_added} total chunks added")
+        
+        # Final stats
+        if rag_retriever:
+            stats = rag_retriever.get_stats()
+            logger.info(f"📊 Vector store stats: {stats}")
         
     except Exception as e:
-        logger.error(f"Error in background PDF processing: {e}")
+        logger.error(f"❌ Error in background PDF processing: {e}")
 
 @app.delete("/admin/clear-vector-store")
 async def clear_vector_store():

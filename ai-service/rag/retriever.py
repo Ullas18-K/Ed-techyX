@@ -144,26 +144,44 @@ class RAGRetriever:
     
     def add_documents(self, chunks: List[Dict[str, Any]]) -> None:
         """
-        Add document chunks to the vector store.
+        Add document chunks to the vector store in batches to manage memory.
         
         Args:
             chunks: List of chunks with 'content' and 'metadata'
         """
+        import gc  # Import garbage collector
+        
         try:
-            # Extract text content
-            texts = [chunk["content"] for chunk in chunks]
+            batch_size = 50  # Process 50 chunks at a time to manage memory
+            total_chunks = len(chunks)
             
-            # Generate embeddings
-            logger.info(f"Generating embeddings for {len(texts)} chunks...")
-            embeddings = self.get_embeddings(texts)
+            logger.info(f"📦 Adding {total_chunks} chunks in batches of {batch_size}...")
             
-            # Add to vector store
-            self.vector_store.add_documents(chunks, embeddings)
+            for i in range(0, total_chunks, batch_size):
+                batch = chunks[i:i + batch_size]
+                batch_num = (i // batch_size) + 1
+                total_batches = (total_chunks + batch_size - 1) // batch_size
+                
+                logger.info(f"🔄 Processing batch {batch_num}/{total_batches} ({len(batch)} chunks)...")
+                
+                # Extract text content for this batch
+                texts = [chunk["content"] for chunk in batch]
+                
+                # Generate embeddings for this batch
+                embeddings = self.get_embeddings(texts)
+                
+                # Add to vector store
+                self.vector_store.add_documents(batch, embeddings)
+                
+                logger.info(f"✅ Batch {batch_num}/{total_batches} added ({i + len(batch)}/{total_chunks} total)")
+                
+                # Force garbage collection after each batch to free memory
+                gc.collect()
             
-            logger.info(f"Successfully added {len(chunks)} chunks to vector store")
+            logger.info(f"🎉 Successfully added all {total_chunks} chunks to vector store")
             
         except Exception as e:
-            logger.error(f"Error adding documents: {e}")
+            logger.error(f"❌ Error adding documents: {e}")
             raise
     
     def retrieve(

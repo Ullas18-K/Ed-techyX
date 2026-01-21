@@ -193,6 +193,8 @@ def process_ncert_directory(directory: str) -> List[Dict[str, Any]]:
     Returns:
         List of all chunks from all PDFs
     """
+    import gc  # Import garbage collector for memory management
+    
     processor = PDFProcessor()
     all_chunks = []
     
@@ -205,10 +207,12 @@ def process_ncert_directory(directory: str) -> List[Dict[str, Any]]:
     # Find all PDF files
     pdf_files = list(pdf_dir.rglob("*.pdf"))
     
-    logger.info(f"Found {len(pdf_files)} PDF files in {directory}")
+    logger.info(f"📚 Found {len(pdf_files)} PDF files in {directory}")
     
-    for pdf_path in pdf_files:
+    for idx, pdf_path in enumerate(pdf_files, 1):
         try:
+            logger.info(f"📄 Processing {idx}/{len(pdf_files)}: {pdf_path.name}")
+            
             # Extract grade and subject from path
             # Example: ncert_pdfs/class_6/science.pdf
             parts = pdf_path.parts
@@ -225,7 +229,7 @@ def process_ncert_directory(directory: str) -> List[Dict[str, Any]]:
                         pass
             
             if grade is None:
-                logger.warning(f"Could not determine grade for {pdf_path}, skipping")
+                logger.warning(f"⚠️  Could not determine grade for {pdf_path}, skipping")
                 continue
             
             metadata = {
@@ -244,10 +248,15 @@ def process_ncert_directory(directory: str) -> List[Dict[str, Any]]:
             )
             all_chunks.extend(chunks)
             
+            logger.info(f"✅ {pdf_path.name}: {len(chunks)} chunks created (Total: {len(all_chunks)})")
+            
+            # Force garbage collection after each PDF to free memory
+            gc.collect()
+            
         except Exception as e:
-            logger.error(f"Error processing {pdf_path}: {e}")
+            logger.error(f"❌ Error processing {pdf_path}: {e}")
             continue
     
-    logger.info(f"Processed {len(pdf_files)} PDFs into {len(all_chunks)} total chunks")
+    logger.info(f"🎉 Processed {len(pdf_files)} PDFs into {len(all_chunks)} total chunks")
     
     return all_chunks
