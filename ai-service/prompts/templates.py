@@ -546,50 +546,48 @@ def get_enhanced_conversation_prompt(
      )
 
 # Derivations and formulas prompt (separate API call for markdown format)
-DERIVATIONS_AND_FORMULAS_PROMPT = """You are an expert science teacher creating comprehensive formula explanations and derivations for {topic} at Grade {grade} level.
+DERIVATIONS_AND_FORMULAS_PROMPT = """Generate comprehensive formula explanations and derivations for {topic} at Grade {grade} level.
 
-Based on this NCERT context:
+NCERT CONTEXT:
 {context}
 
-Provide ALL relevant formulas and their complete step-by-step derivations for {topic}. Use proper markdown formatting with:
-- Mathematical symbols (subscripts, superscripts, Greek letters, special characters) - DO NOT remove or clean them
-- Headings (##, ###) for organization
-- Bold (**text**) for emphasis
-- Bullet points and numbered lists for steps
-- LaTeX-style notation where appropriate (e.g., v₀, ΔE, λ, θ)
+CRITICAL OUTPUT RULES:
+1. Start DIRECTLY with markdown headings - NO greetings, NO "Here are...", NO conversational intro
+2. Use ONLY markdown formatting - NO JSON, NO code blocks
+3. Begin immediately with: ## Formulas for {topic}
+4. Include ALL mathematical symbols exactly (subscripts, superscripts, Greek letters)
 
-Structure your response as:
+STRUCTURE:
 
 ## Formulas for {topic}
 
 ### Formula 1: [Name]
-**Equation**: [Write the formula with all symbols]
+**Equation**: [Formula with all symbols]
 
 **Derivation**:
 1. [Step 1 with explanation]
 2. [Step 2 with explanation]
-3. [Continue until complete derivation]
+3. [Continue until complete]
 
 **Where**:
-- [Variable 1] = [meaning and unit]
-- [Variable 2] = [meaning and unit]
+- [Variable] = [meaning and unit]
 
-**Applications**: [When and how this formula is used]
+**Applications**: [Usage]
 
 ---
 
 ### Formula 2: [Name]
-[Repeat same structure]
+[Repeat structure]
 
-IMPORTANT:
-- Include ALL formulas mentioned in NCERT context
-- Provide complete derivations with clear logical steps
-- Use actual mathematical symbols (don't replace them with text)
-- Explain physical meaning of each step
-- Include practical applications and examples
-- Make it comprehensive (aim for 500-800 words total)
+REQUIREMENTS:
+- Include ALL formulas from NCERT context
+- Complete derivations with clear steps
+- Use actual mathematical symbols (v₀, ΔE, λ, θ)
+- Explain physical meaning
+- Include practical applications
+- Aim for 500-800 words total
 
-DO NOT format this as JSON. Return ONLY markdown text.
+START YOUR RESPONSE DIRECTLY WITH THE MARKDOWN HEADING. DO NOT add any introductory text.
 """
 
 # State Explanation Prompt

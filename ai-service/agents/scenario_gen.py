@@ -111,19 +111,64 @@ async def get_formulas_and_derivations_markdown(
             derivations_prompt,
             generation_config={
                 "temperature": 0.7,
-                "max_output_tokens": 4096,
+                "max_output_tokens": 8192,  # Increased for longer derivations
             }
         )
         
-        if not response or not response.text:
+        if not response:
             logger.warning("Empty response from Gemini for derivations")
             return "No derivations available."
         
-        # Return raw markdown - NO cleaning, NO processing, ALL symbols intact
-        markdown_content = response.text.strip()
-        logger.info(f"Retrieved {len(markdown_content)} characters of derivations markdown")
-        
-        return markdown_content
+        # Handle multiple content parts (Gemini sometimes splits long responses)
+        try:
+            # Try to get text from response
+            if hasattr(response, 'text') and response.text:
+                markdown_content = response.text.strip()
+            elif hasattr(response, 'candidates') and response.candidates:
+                # Handle multiple parts in candidates
+                candidate = response.candidates[0]
+                if hasattr(candidate, 'content') and hasattr(candidate.content, 'parts'):
+                    # Concatenate all text parts
+                    parts = candidate.content.parts
+                    text_parts = [part.text for part in parts if hasattr(part, 'text')]
+                    markdown_content = ''.join(text_parts).strip()
+                else:
+                    logger.warning("No content parts found in candidate")
+                    return "No derivations available."
+            else:
+                logger.warning("Unable to extract text from response")
+                return "No derivations available."
+            
+            if not markdown_content:
+                logger.warning("Empty markdown content after extraction")
+                return "No derivations available."
+            
+            # Clean up any conversational intros that might sneak through
+            # Remove common intro phrases
+            intro_phrases = [
+                "Of course!",
+                "Here are",
+                "Here is",
+                "Sure!",
+                "Certainly!",
+                "Let me provide",
+                "I'll provide"
+            ]
+            
+            for phrase in intro_phrases:
+                if markdown_content.startswith(phrase):
+                    # Find first markdown heading and start from there
+                    heading_idx = markdown_content.find('##')
+                    if heading_idx > 0:
+                        markdown_content = markdown_content[heading_idx:]
+                    break
+            
+            logger.info(f"Retrieved {len(markdown_content)} characters of derivations markdown")
+            return markdown_content
+            
+        except Exception as extract_error:
+            logger.error(f"Error extracting text from response: {extract_error}")
+            return f"Error processing derivations: {str(extract_error)}"
         
     except Exception as e:
         logger.error(f"Error fetching derivations markdown: {str(e)}")
