@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import axios from 'axios';
 import API_CONFIG from '@/config/api';
 
-const API_URL = API_CONFIG.BACKEND_BASE_URL;
+const API_URL = API_CONFIG.BACKEND_API_URL;
 
 interface Subject {
   name: string;
@@ -149,7 +149,7 @@ export const useExamPlanningStore = create<ExamPlanningState>((set, get) => ({
     
     try {
       const response = await axios.post(
-        `${API_URL}/api/exam-planning/generate`,
+        `${API_URL}/exam-planning/generate`,
         data,
         {
           headers: {
@@ -177,7 +177,7 @@ export const useExamPlanningStore = create<ExamPlanningState>((set, get) => ({
     
     try {
       const response = await axios.get(
-        `${API_URL}/api/exam-planning/plans`,
+        `${API_URL}/exam-planning/plans`,
         {
           params: { status },
           headers: {
@@ -202,7 +202,7 @@ export const useExamPlanningStore = create<ExamPlanningState>((set, get) => ({
     
     try {
       const response = await axios.get(
-        `${API_URL}/api/exam-planning/plans/${planId}`,
+        `${API_URL}/exam-planning/plans/${planId}`,
         {
           headers: {
             Authorization: `Bearer ${token}`
@@ -228,7 +228,7 @@ export const useExamPlanningStore = create<ExamPlanningState>((set, get) => ({
       console.log(`🔄 Fetching daily content for Day ${day}...`);
       
       const response = await axios.get(
-        `${API_URL}/api/exam-planning/daily-content/${planId}/${day}`,
+        `${API_URL}/exam-planning/daily-content/${planId}/${day}`,
         {
           params: { regenerate },
           headers: {
@@ -281,7 +281,7 @@ export const useExamPlanningStore = create<ExamPlanningState>((set, get) => ({
   deletePlan: async (planId, token) => {
     try {
       const response = await axios.delete(
-        `${API_URL}/api/exam-planning/plans/${planId}`,
+        `${API_URL}/exam-planning/plans/${planId}`,
         {
           headers: {
             Authorization: `Bearer ${token}`
@@ -306,7 +306,7 @@ export const useExamPlanningStore = create<ExamPlanningState>((set, get) => ({
   updatePlanStatus: async (planId, status, token) => {
     try {
       const response = await axios.patch(
-        `${API_URL}/api/exam-planning/plans/${planId}/status`,
+        `${API_URL}/exam-planning/plans/${planId}/status`,
         { status },
         {
           headers: {
