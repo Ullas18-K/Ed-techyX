@@ -372,7 +372,7 @@ Generate ONLY the JSON array, no extra text."""
         return None
     
     async def _enhance_pyq_answers(self, questions: List[PYQQuestion]) -> List[PYQQuestion]:
-        """Use Gemini to generate comprehensive answers and explanations for PYQ questions"""
+        """Use Gemini to reframe questions and generate comprehensive answers"""
         if not self.model:
             logger.warning("⚠️ Gemini model not available, skipping answer enhancement")
             return questions
@@ -381,73 +381,128 @@ Generate ONLY the JSON array, no extra text."""
         
         for question in questions:
             try:
-                # Create prompt for Gemini to generate comprehensive answer
-                prompt = f"""You are an expert NCERT science teacher. A student has asked a Previous Year Question (PYQ).
+                # First, reframe the question if it's messy from RAG
+                raw_question = question.questionText
+                
+                # Create prompt to clean and enhance the PYQ
+                prompt = f"""TASK: Extract and reframe a clean Previous Year Question, then provide a comprehensive NCERT-aligned answer.
 
-QUESTION: {question.question_text}
+RAW TEXT FROM PDF (may be incomplete or messy):
+{raw_question[:500]}
+
+{f'ADDITIONAL CONTEXT: {question.answer[:300]}' if question.answer else ''}
 
 SUBJECT: {question.subject}
-GRADE: {question.grade}
+GRADE: Grade {question.grade}
 TOPIC: {question.topic}
 {f'YEAR: {question.year}' if question.year else ''}
-{f'IMAGE DESCRIPTION: {question.image_description}' if question.image_description else ''}
 
-{f'ORIGINAL ANSWER FROM PDF: {question.answer}' if question.answer else 'No answer provided in the PDF.'}
+CRITICAL OUTPUT RULES:
+1. NO greetings, NO "Of course!", NO conversational intro
+2. Start DIRECTLY with the cleaned question
+3. Use ONLY structured format below
+4. Use Markdown for formatting
 
-Please provide:
-1. A COMPREHENSIVE ANSWER that is clear and educational (3-5 sentences minimum)
-2. A step-by-step EXPLANATION structured with clear headings or numbered steps.
-3. FORMATTING: Use Markdown significantly:
-   - Use **bold** for key terms.
-   - Use *italics* for emphasis.
-   - Use `code blocks` or LateX format for formulas.
-   - Use bullet points or numbered lists for readability.
-4. Reference NCERT concepts where applicable
-5. Include relevant formulas or key points if applicable
-6. If image was mentioned, describe how it relates to the concept
+OUTPUT FORMAT:
 
-Format your response as:
-ANSWER: [Your comprehensive answer with Markdown]
-EXPLANATION: [Step-by-step explanation with Markdown and clear structure]"""
+QUESTION: [Extract and reframe the question as a clear, complete exam question. If the raw text is incomplete, infer the full question based on context.]
+
+ANSWER:
+[Provide a comprehensive answer in 3-5 paragraphs. Use **bold** for key terms, *italics* for emphasis. NO conversational intro.]
+
+EXPLANATION:
+**Step 1: [Concept Name]**
+[Explain the concept]
+
+**Step 2: [Key Point]**
+[Detailed explanation]
+
+**Step 3: [Application]**
+[How it applies]
+
+{f'**Diagram Reference:** {question.imageDescription}' if question.imageDescription else ''}
+
+**Key Formulas/Points:**
+- [Formula 1 or key point]
+- [Formula 2 or key point]
+
+START YOUR RESPONSE DIRECTLY WITH "QUESTION:" - NO INTRO TEXT.
 
                 # Call Gemini
-                response = self.model.generate_content(prompt)  # type: ignore
+                response = self.model.generate_content(
+                    prompt,
+                    generation_config={
+                        "temperature": 0.7,
+                        "max_output_tokens": 2048,
+                    }
+                )
                 
-                # Parse response
+                # Parse response - handle multiple parts
                 response_text = ""
                 try:
-                    response_text = response.text.strip()
-                except (AttributeError, TypeError):
+                    if hasattr(response, 'text') and response.text:
+                        response_text = response.text.strip()
+                    elif hasattr(response, 'candidates') and response.candidates:
+                        candidate = response.candidates[0]
+                        if hasattr(candidate, 'content') and hasattr(candidate.content, 'parts'):
+                            parts = candidate.content.parts
+                            text_parts = [part.text for part in parts if hasattr(part, 'text')]
+                            response_text = ''.join(text_parts).strip()
+                except (AttributeError, TypeError) as e:
+                    logger.error(f"Error extracting text: {e}")
                     response_text = str(response).strip()
                 
-                # Extract answer and explanation
+                if not response_text:
+                    logger.warning(f"Empty response for question: {raw_question[:50]}")
+                    enhanced_questions.append(question)
+                    continue
+                
+                # Clean up any conversational intros that slip through
+                intro_phrases = ["Of course!", "Here is", "Here are", "Sure!", "Certainly!"]
+                for phrase in intro_phrases:
+                    if response_text.startswith(phrase):
+                        # Find QUESTION: marker and start from there
+                        question_idx = response_text.find('QUESTION:')
+                        if question_idx > 0:
+                            response_text = response_text[question_idx:]
+                        break
+                
+                # Extract question, answer, and explanation
+                cleaned_question = question.questionText
                 enhanced_answer = None
                 enhanced_explanation = None
                 
-                if "ANSWER:" in response_text:
-                    parts = response_text.split("EXPLANATION:")
-                    answer_part = parts[0].replace("ANSWER:", "").strip()
-                    enhanced_answer = answer_part
+                if "QUESTION:" in response_text:
+                    parts = response_text.split("ANSWER:")
+                    question_part = parts[0].replace("QUESTION:", "").strip()
+                    if question_part:
+                        cleaned_question = question_part
                     
                     if len(parts) > 1:
-                        enhanced_explanation = parts[1].strip()
-                    else:
-                        enhanced_explanation = answer_part
+                        answer_parts = parts[1].split("EXPLANATION:")
+                        enhanced_answer = answer_parts[0].strip()
+                        
+                        if len(answer_parts) > 1:
+                            enhanced_explanation = answer_parts[1].strip()
+                        else:
+                            enhanced_explanation = enhanced_answer
                 else:
+                    # Fallback if format not followed
                     enhanced_answer = response_text
                     enhanced_explanation = response_text
                 
-                # Update question with enhanced answer
-                question.answer = enhanced_answer
-                question.answer_explanation = enhanced_explanation
+                # Update question with cleaned data
+                question.questionText = cleaned_question
+                question.answer = enhanced_answer or question.answer
+                question.answerExplanation = enhanced_explanation or enhanced_answer or question.answer
                 
-                logger.debug(f"✅ Enhanced answer for: {question.question_text[:50]}...")
+                logger.debug(f"✅ Enhanced PYQ: {cleaned_question[:60]}...")
                 
             except Exception as e:
-                logger.error(f"Error enhancing answer for question: {e}")
-                # Keep original answer if enhancement fails
+                logger.error(f"Error enhancing PYQ: {e}")
+                # Keep original question if enhancement fails
             
             enhanced_questions.append(question)
         
-        logger.info(f"✅ Enhanced {len(enhanced_questions)} PYQ answers")
+        logger.info(f"✅ Enhanced {len(enhanced_questions)} PYQ questions and answers")
         return enhanced_questions
