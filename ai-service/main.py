@@ -33,6 +33,7 @@ from utils.pyq_ingestion import ingest_all_pyqs
 from utils.tts_service import tts_service
 from utils.ai_response_cache import build_cache_key, get_from_cache, set_cache
 from utils.gcs_pdf_manager import download_pdfs_from_gcs
+from utils.chromadb_downloader import download_chromadb_from_gcs, chromadb_exists_locally
 from fastapi.responses import FileResponse, Response
 import os
 
@@ -95,33 +96,63 @@ async def startup_event():
     logger.info(f"GCP Project: {settings.GCP_PROJECT_ID or 'Not configured'}")
     
     try:
-        # Download PDFs from GCS if configured
+        # ===================================================================
+        # OPTION 1: Download Pre-Built ChromaDB from GCS (RECOMMENDED)
+        # ===================================================================
+        gcs_chromadb_path = os.getenv("GCS_CHROMADB_PATH")  # e.g., "chroma_db"
         gcs_bucket = os.getenv("GCS_BUCKET_NAME")
-        if gcs_bucket:
+        
+        if gcs_bucket and gcs_chromadb_path:
+            logger.info("📦 GCS ChromaDB configured - checking for pre-built database...")
+            
+            if not chromadb_exists_locally("./chroma_db"):
+                logger.info("🔄 Downloading pre-built ChromaDB from GCS...")
+                chromadb_success = download_chromadb_from_gcs(
+                    bucket_name=gcs_bucket,
+                    remote_path=gcs_chromadb_path,
+                    local_path="./chroma_db"
+                )
+                
+                if chromadb_success:
+                    logger.info("✅ ChromaDB downloaded successfully!")
+                else:
+                    logger.warning("⚠️  ChromaDB download failed - will initialize empty database")
+            else:
+                logger.info("✅ ChromaDB already exists locally, skipping download")
+        
+        # ===================================================================
+        # OPTION 2: Download PDFs Only (for manual processing - NOT RECOMMENDED)
+        # ===================================================================
+        elif gcs_bucket:
             logger.info(f"📦 GCS Bucket configured: {gcs_bucket}")
+            logger.warning("⚠️  GCS_CHROMADB_PATH not set - PDF processing will fail on 512MB tier")
+            logger.warning("💡 Build ChromaDB offline instead: python build_chromadb_offline.py")
             pdf_success = download_pdfs_from_gcs(gcs_bucket)
             if pdf_success:
-                logger.info("✅ PDFs ready for processing")
+                logger.info("✅ PDFs downloaded (but processing not recommended)")
             else:
-                logger.warning("⚠️ Failed to download PDFs from GCS, will continue without RAG data")
+                logger.warning("⚠️ Failed to download PDFs from GCS")
         else:
-            logger.info("💡 GCS_BUCKET_NAME not set, skipping PDF download")
+            logger.info("💡 GCS_BUCKET_NAME not set, skipping downloads")
         
-        # Initialize RAG retriever
+        # Initialize RAG retriever (uses local ChromaDB)
         rag_retriever = RAGRetriever()
         logger.info("RAG retriever initialized")
         
-        # Check vector store status (but don't auto-process to save memory)
+        # Check vector store status
         stats = rag_retriever.get_stats()
+        logger.info(f"📊 Vector store stats: {stats}")
+        
         if stats["total_documents"] == 0:
-            ncert_dir = Path("./ncert_pdfs")
-            if ncert_dir.exists() and list(ncert_dir.rglob("*.pdf")):
-                logger.info("📚 Found NCERT PDFs locally")
-                logger.info("⚠️ Skipping auto-processing to save memory on startup")
-                logger.info("💡 PDFs will be processed on first use OR manually via POST /admin/process-pdfs")
-            else:
-                logger.warning("Vector store is empty! No NCERT PDFs found.")
-                logger.info("To add PDFs: 1) Upload to GCS bucket, or 2) Use POST /admin/process-pdfs")
+            logger.warning("⚠️  Vector store is empty!")
+            logger.warning("💡 To populate it:")
+            logger.warning("   1. Run 'python build_chromadb_offline.py' locally")
+            logger.warning("   2. Upload chroma_db/ to GCS:")
+            logger.warning("      gsutil -m cp -r ./chroma_db gs://YOUR-BUCKET/")
+            logger.warning("   3. Set GCS_CHROMADB_PATH=chroma_db in Render")
+            logger.warning("   4. Redeploy service")
+        else:
+            logger.info(f"✅ Vector store ready with {stats['total_documents']} documents")
         
         # Initialize agents
         scenario_generator = ScenarioGenerator(rag_retriever)
