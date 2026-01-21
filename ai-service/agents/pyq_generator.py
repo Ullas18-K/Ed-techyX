@@ -382,7 +382,7 @@ Generate ONLY the JSON array, no extra text."""
         for question in questions:
             try:
                 # First, reframe the question if it's messy from RAG
-                raw_question = question.questionText
+                raw_question = question.question_text
                 
                 # Create prompt to clean and enhance the PYQ
                 prompt = f"""TASK: Extract and reframe a clean Previous Year Question, then provide a comprehensive NCERT-aligned answer.
@@ -420,7 +420,7 @@ EXPLANATION:
 **Step 3: [Application]**
 [How it applies]
 
-{f'**Diagram Reference:** {question.imageDescription}' if question.imageDescription else ''}
+{f'**Diagram Reference:** {question.image_description}' if question.image_description else ''}
 
 **Key Formulas/Points:**
 - [Formula 1 or key point]
@@ -468,7 +468,7 @@ START YOUR RESPONSE DIRECTLY WITH "QUESTION:" - NO INTRO TEXT."""
                         break
                 
                 # Extract question, answer, and explanation
-                cleaned_question = question.questionText
+                cleaned_question = question.question_text
                 enhanced_answer = None
                 enhanced_explanation = None
                 
@@ -492,9 +492,9 @@ START YOUR RESPONSE DIRECTLY WITH "QUESTION:" - NO INTRO TEXT."""
                     enhanced_explanation = response_text
                 
                 # Update question with cleaned data
-                question.questionText = cleaned_question
+                question.question_text = cleaned_question
                 question.answer = enhanced_answer or question.answer
-                question.answerExplanation = enhanced_explanation or enhanced_answer or question.answer
+                question.answer_explanation = enhanced_explanation or enhanced_answer or question.answer
                 
                 logger.debug(f"✅ Enhanced PYQ: {cleaned_question[:60]}...")
                 
