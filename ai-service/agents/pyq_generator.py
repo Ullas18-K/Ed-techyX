@@ -426,7 +426,7 @@ EXPLANATION:
 - [Formula 1 or key point]
 - [Formula 2 or key point]
 
-START YOUR RESPONSE DIRECTLY WITH "QUESTION:" - NO INTRO TEXT.
+START YOUR RESPONSE DIRECTLY WITH "QUESTION:" - NO INTRO TEXT."""
 
                 # Call Gemini
                 response = self.model.generate_content(
